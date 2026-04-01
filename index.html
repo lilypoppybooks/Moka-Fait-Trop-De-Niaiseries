@@ -10,12 +10,32 @@ body{background:#ffb3c6;display:flex;flex-direction:column;align-items:center;ju
 #wrapper{width:100%;max-width:700px;position:relative;user-select:none;}
 canvas{display:block;width:100%;height:auto;border:4px solid #222;cursor:pointer;}
 #hud{display:flex;justify-content:space-between;align-items:center;background:#111;color:#fff;padding:6px 14px;font-size:13px;letter-spacing:1px;border:4px solid #222;border-top:none;}
-#dpad{display:none;position:relative;width:200px;height:160px;margin:8px auto 0;}
-#dpad button{position:absolute;width:52px;height:52px;background:#222;color:#fff;font-size:22px;border:2px solid #444;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none;}
-#dpad button:active{background:#555;}
-#btn-up{top:0;left:74px;}#btn-down{bottom:0;left:74px;}#btn-left{left:0;top:54px;}#btn-right{right:52px;top:54px;}
-#btn-action{right:0;top:54px;width:52px;height:52px;background:#ff6b9d;border-radius:50%;font-size:14px;}
-@media(max-width:600px),(pointer:coarse){#dpad{display:block;}}
+
+/* ── D-PAD MOBILE ── */
+#mobile-controls{display:none;position:relative;width:100%;padding:6px 0 4px;background:#0a0a0a;}
+
+/* Zone gauche: D-Pad */
+#dpad-zone{position:absolute;left:10px;bottom:6px;width:160px;height:130px;}
+#dpad{position:relative;width:160px;height:130px;}
+#dpad button{position:absolute;width:48px;height:48px;background:#1a1a2e;color:#fff;font-size:20px;border:2px solid #444;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none;transition:background .08s;-webkit-tap-highlight-color:transparent;touch-action:none;}
+#dpad button:active,#dpad button.pressed{background:#ff3388;}
+#btn-up{top:0;left:56px;}
+#btn-down{bottom:0;left:56px;}
+#btn-left{left:0;top:41px;}
+#btn-right{left:112px;top:41px;}
+
+/* Zone droite: boutons action + menu */
+#action-zone{position:absolute;right:10px;bottom:6px;display:flex;flex-direction:column;gap:6px;align-items:flex-end;}
+#btn-action{width:58px;height:58px;background:#ff3388;border-radius:50%;font-size:16px;border:3px solid #ff88bb;color:#fff;cursor:pointer;user-select:none;-webkit-user-select:none;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;touch-action:none;font-family:monospace;font-weight:bold;transition:background .08s;}
+#btn-action:active,#btn-action.pressed{background:#cc0055;}
+#menu-btns{display:flex;flex-direction:row;gap:5px;}
+.mbtn{padding:6px 10px;background:#222;color:#fff;border:2px solid #555;border-radius:8px;font-size:11px;font-family:monospace;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;touch-action:none;white-space:nowrap;transition:background .08s;}
+.mbtn:active,.mbtn.pressed{background:#ff3388;}
+
+/* Placeholder pour centrer le dpad */
+#mobile-controls-inner{display:flex;justify-content:space-between;align-items:flex-end;padding:0 10px;height:140px;}
+
+@media(max-width:700px),(pointer:coarse){#mobile-controls{display:block;}}
 </style>
 </head>
 <body>
@@ -26,10 +46,27 @@ canvas{display:block;width:100%;height:auto;border:4px solid #222;cursor:pointer
     <div style="color:#fff;letter-spacing:2px" id="lvlname">NIVEAU 1</div>
     <div style="color:#ff6b9d" id="lv">❤️❤️ 2 VIES</div>
   </div>
-  <div id="dpad">
-    <button id="btn-up">▲</button><button id="btn-left">◀</button>
-    <button id="btn-right">▶</button><button id="btn-down">▼</button>
-    <button id="btn-action">💥</button>
+  <!-- CONTRÔLES MOBILES -->
+  <div id="mobile-controls">
+    <div id="mobile-controls-inner">
+      <!-- D-Pad gauche -->
+      <div id="dpad">
+        <button id="btn-up">▲</button>
+        <button id="btn-left">◀</button>
+        <button id="btn-right">▶</button>
+        <button id="btn-down">▼</button>
+      </div>
+      <!-- Boutons menu central -->
+      <div id="menu-btns">
+        <button class="mbtn" id="mb-ok">✅ OK</button>
+        <button class="mbtn" id="mb-back">↩ RET</button>
+        <button class="mbtn" id="mb-pause">⏸</button>
+      </div>
+      <!-- Bouton action droite -->
+      <div id="action-zone">
+        <button id="btn-action">💥</button>
+      </div>
+    </div>
   </div>
 </div>
 <script>
@@ -55,6 +92,7 @@ function snd(type){
     else if(type==="banane"){[523,659,784].forEach((f,i)=>{const o2=ac.createOscillator(),g2=ac.createGain();o2.connect(g2);g2.connect(ac.destination);o2.frequency.value=f;g2.gain.setValueAtTime(.1,ac.currentTime+i*.08);g2.gain.exponentialRampToValueAtTime(.001,ac.currentTime+i*.08+.15);o2.start(ac.currentTime+i*.08);o2.stop(ac.currentTime+i*.08+.15);});}
     else if(type==="win"){[523,659,784,1047].forEach((f,i)=>{const o2=ac.createOscillator(),g2=ac.createGain();o2.connect(g2);g2.connect(ac.destination);o2.frequency.value=f;g2.gain.setValueAtTime(.12,ac.currentTime+i*.12);g2.gain.exponentialRampToValueAtTime(.001,ac.currentTime+i*.12+.2);o2.start(ac.currentTime+i*.12);o2.stop(ac.currentTime+i*.12+.2);});}
     else if(type==="loselife"){o.type="sawtooth";o.frequency.setValueAtTime(400,ac.currentTime);o.frequency.exponentialRampToValueAtTime(80,ac.currentTime+.5);g.gain.setValueAtTime(.25,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.5);o.start();o.stop(ac.currentTime+.5);}
+    else if(type==="angry"){o.type="square";o.frequency.setValueAtTime(200,ac.currentTime);o.frequency.exponentialRampToValueAtTime(100,ac.currentTime+.3);g.gain.setValueAtTime(.2,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.35);o.start();o.stop(ac.currentTime+.35);}
   }catch(e){}}
 async function startMusic(){
   if(musicMuted||bgSrc)return;
@@ -68,7 +106,7 @@ function stopMusic(){if(bgSrc){try{bgSrc.stop();}catch(e){}bgSrc=null;bgGain=nul
 function toggleMusic(){musicMuted=!musicMuted;if(bgGain)bgGain.gain.value=musicMuted?0:.4;if(!musicMuted&&!bgSrc)startMusic();}
 
 // ── DIFFICULTÉ ──
-let difficulty="facile"; // "facile" ou "difficile"
+let difficulty="facile";
 function getDiffConfig(){
   if(difficulty==="difficile")return{felixChaseRange:4.5,felixChaseKeep:true,liliChaseRange:4.0,liliChaseKeep:true,felixSpeed:1.1,liliSpeed:0.95};
   return{felixChaseRange:3.0,felixChaseKeep:false,liliChaseRange:2.5,liliChaseKeep:false,felixSpeed:0.85,liliSpeed:0.7};
@@ -79,21 +117,25 @@ let state="menu",score=0,hiScore=0,t=0,lastT=0,niaiseries=0,menuSel=0;
 let lives=2,currentLevel=1;
 let mk={x:4,y:5,dir:"bas",frame:0,ft:0};
 const WPS=[[11,2],[2,2],[2,8],[11,8],[6,5]];
-let felix={x:11,y:2,dir:"bas",frame:0,ft:0,wp:0,chasing:false,alert:0};
+
+// ── FÉLIX — stade de colère (s'accumule par niveau) ──
+// felixRage: 0=ménage normal, 1=repair+bref poursuite, 2=poursuite+retour, 3=poursuite permanente
+let felix={x:11,y:2,dir:"bas",frame:0,ft:0,wp:0,chasing:false,alert:0,rage:0,rageChaseDur:0,rageReturnTimer:0};
 let lili={x:1,y:8,dir:"bas",frame:0,ft:0,target:null,chasing:false,hairAnim:0};
-let ch={x:12,y:8,dir:"bas",fleeing:false,vx:0,vy:0,fleeTimer:0};
+let ch={x:12,y:8,dir:"bas",fleeing:false,vx:0,vy:0,fleeTimer:0,fearAnim:0,targetCorner:null};
 let bn={active:false,x:0,y:0,timer:0,spawnIn:15+Math.random()*20};
 let objs=[],rubble=[],parts=[],keys={},spWas=false,highScores=[];
 let liliHitCooldown=0;
 let felixHitCooldown=0;
 
+// ── ÉTAT CHARGEMENT ──
+let loadingProgress=0; // 0..1
+let loadingTimer=0;
+let loadingDuration=2.5;
+
 // ── DÉFINITIONS NIVEAUX ──
 const LEVEL_DEFS=[
-  { // Niveau 1 — Salon de Félix
-    name:"SALON DE FÉLIX",
-    roomStyle:"salon",
-    felixStart:{x:11,y:2},liliStart:{x:1,y:8},mokaStart:{x:4,y:5},choupiStart:{x:12,y:8},
-    felixWP:[[11,2],[2,2],[2,8],[11,8],[6,5]],
+  {name:"SALON DE FÉLIX",roomStyle:"salon",felixStart:{x:11,y:2},liliStart:{x:1,y:8},mokaStart:{x:4,y:5},choupiStart:{x:12,y:8},felixWP:[[11,2],[2,2],[2,8],[11,8],[6,5]],
     objs:[
       {id:0,t:"sofa",   x:2, y:2,w:3,h:2,ok:true,pts:150,hp:3,maxHp:3},
       {id:1,t:"tv",     x:10,y:1,w:2,h:2,ok:true,pts:200,hp:4,maxHp:4},
@@ -105,13 +147,8 @@ const LEVEL_DEFS=[
       {id:7,t:"plant",  x:12,y:6,w:1,h:2,ok:true,pts:60, hp:1,maxHp:1},
       {id:8,t:"cushion",x:7, y:2,w:1,h:1,ok:true,pts:50, hp:1,maxHp:1},
       {id:9,t:"cushion",x:8, y:2,w:1,h:1,ok:true,pts:50, hp:1,maxHp:1},
-    ]
-  },
-  { // Niveau 2 — Cuisine
-    name:"CUISINE DE FÉLIX",
-    roomStyle:"cuisine",
-    felixStart:{x:2,y:1},liliStart:{x:12,y:8},mokaStart:{x:7,y:5},choupiStart:{x:1,y:1},
-    felixWP:[[2,1],[12,1],[12,8],[2,8],[7,4]],
+    ]},
+  {name:"CUISINE DE FÉLIX",roomStyle:"cuisine",felixStart:{x:2,y:1},liliStart:{x:12,y:8},mokaStart:{x:7,y:5},choupiStart:{x:1,y:1},felixWP:[[2,1],[12,1],[12,8],[2,8],[7,4]],
     objs:[
       {id:0,t:"tv",     x:1, y:1,w:2,h:2,ok:true,pts:200,hp:4,maxHp:4},
       {id:1,t:"sofa",   x:5, y:1,w:3,h:2,ok:true,pts:150,hp:3,maxHp:3},
@@ -123,13 +160,8 @@ const LEVEL_DEFS=[
       {id:7,t:"box",    x:8, y:7,w:1,h:1,ok:true,pts:80, hp:1,maxHp:1},
       {id:8,t:"cushion",x:10,y:4,w:1,h:1,ok:true,pts:50, hp:1,maxHp:1},
       {id:9,t:"cushion",x:11,y:4,w:1,h:1,ok:true,pts:50, hp:1,maxHp:1},
-    ]
-  },
-  { // Niveau 3 — Chambre
-    name:"CHAMBRE DE FÉLIX",
-    roomStyle:"chambre",
-    felixStart:{x:6,y:1},liliStart:{x:6,y:8},mokaStart:{x:1,y:5},choupiStart:{x:12,y:1},
-    felixWP:[[1,1],[13,1],[13,8],[1,8],[7,5]],
+    ]},
+  {name:"CHAMBRE DE FÉLIX",roomStyle:"chambre",felixStart:{x:6,y:1},liliStart:{x:6,y:8},mokaStart:{x:1,y:5},choupiStart:{x:12,y:1},felixWP:[[1,1],[13,1],[13,8],[1,8],[7,5]],
     objs:[
       {id:0,t:"sofa",   x:4, y:1,w:3,h:2,ok:true,pts:150,hp:3,maxHp:3},
       {id:1,t:"tv",     x:11,y:6,w:2,h:2,ok:true,pts:200,hp:4,maxHp:4},
@@ -141,8 +173,7 @@ const LEVEL_DEFS=[
       {id:7,t:"cushion",x:9, y:1,w:1,h:1,ok:true,pts:50, hp:1,maxHp:1},
       {id:8,t:"cushion",x:10,y:1,w:1,h:1,ok:true,pts:50, hp:1,maxHp:1},
       {id:9,t:"box",    x:3, y:7,w:1,h:1,ok:true,pts:80, hp:1,maxHp:1},
-    ]
-  }
+    ]}
 ];
 
 // ── OBJETS ──
@@ -161,23 +192,31 @@ async function loadHS(){
 loadHS();
 function saveHS(name,sc){highScores.push({name,score:sc});highScores.sort((a,b)=>b.score-a.score);highScores=highScores.slice(0,10);}
 
-// ── CONTRÔLES ──
+// ── CONTRÔLES CLAVIER ──
 document.addEventListener("keydown",e=>{
   keys[e.key]=true;
   if(e.key===" "||e.key.startsWith("Arrow"))e.preventDefault();
-  if(state==="menu"){
-    if(e.key==="ArrowUp")menuSel=(menuSel-1+4)%4;
-    if(e.key==="ArrowDown")menuSel=(menuSel+1)%4;
-    if(e.key==="Enter"||e.key===" ")doMenuSel();
-  }
-  if(state==="options"&&(e.key==="Escape"||e.key==="Backspace"))state="menu";
-  if(state==="highscores"&&(e.key==="Escape"||e.key===" "||e.key==="Enter"))state="menu";
-  if(state==="loselife"&&(e.key===" "||e.key==="Enter")){state="playing";liliHitCooldown=2;felixHitCooldown=2;}
-  if((state==="dead"||state==="win")&&(e.key===" "||e.key==="Enter")){fullReset();state="menu";}
+  handleMenuKey(e.key);
 });
 document.addEventListener("keyup",e=>{keys[e.key]=false;});
 
+function handleMenuKey(key){
+  if(state==="menu"){
+    if(key==="ArrowUp")menuSel=(menuSel-1+4)%4;
+    if(key==="ArrowDown")menuSel=(menuSel+1)%4;
+    if(key==="Enter"||key===" ")doMenuSel();
+  }
+  if(state==="options"&&(key==="Escape"||key==="Backspace"))state="menu";
+  if(state==="highscores"&&(key==="Escape"||key===" "||key==="Enter"))state="menu";
+  if(state==="loselife"&&(key===" "||key==="Enter")){continuePlaying();}
+  if((state==="dead"||state==="win")&&(key===" "||key==="Enter")){fullReset();state="menu";}
+  if(state==="loading"&&(key===" "||key==="Enter")&&loadingProgress>=1){finishLoading();}
+}
+
+function continuePlaying(){state="playing";liliHitCooldown=2;felixHitCooldown=2;}
+
 function doMenuSel(){
+  getAC(); // unlock audio context
   if(menuSel===0){fullReset();state="playing";startMusic();}
   else if(menuSel===1)state="options";
   else if(menuSel===2)state="highscores";
@@ -188,12 +227,27 @@ function doMenuSel(){
 canvas.addEventListener("click",e=>{
   const rect=canvas.getBoundingClientRect(),sx=W/rect.width;
   const cx=(e.clientX-rect.left)*sx,cy=(e.clientY-rect.top)*sx;
+  handleCanvasClick(cx,cy);
+});
+canvas.addEventListener("touchstart",e=>{
+  e.preventDefault();
+  if(state!=="playing"){
+    const rect=canvas.getBoundingClientRect(),sx=W/rect.width;
+    const cx=(e.touches[0].clientX-rect.left)*sx,cy=(e.touches[0].clientY-rect.top)*sx;
+    handleCanvasClick(cx,cy);
+  }
+  tOrig={x:e.touches[0].clientX,y:e.touches[0].clientY};
+},{passive:false});
+
+function handleCanvasClick(cx,cy){
   if(state==="menu")menuClick(cx,cy);
   if(state==="options")optClick(cx,cy);
   if(state==="highscores")state="menu";
   if(state==="dead"||state==="win")endClick(cx,cy);
   if(state==="loselife")loseLifeClick(cx,cy);
-});
+  if(state==="loading"&&loadingProgress>=1)finishLoading();
+}
+
 function menuClick(cx,cy){
   const btns=[
     {y:180,action:()=>{fullReset();state="playing";startMusic();}},
@@ -216,90 +270,237 @@ function endClick(cx,cy){
   if(cy>=355&&cy<=395){fullReset();state="menu";}
 }
 function loseLifeClick(cx,cy){
-  if(cy>=260&&cy<=310){state="playing";liliHitCooldown=2;felixHitCooldown=2;}
+  if(cy>=260&&cy<=310){continuePlaying();}
 }
 
-// ── TOUCH ──
+// ── TOUCH GAMEPLAY ──
 let tOrig=null;
-canvas.addEventListener("touchstart",e=>{e.preventDefault();tOrig={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:false});
-canvas.addEventListener("touchmove",e=>{e.preventDefault();if(!tOrig||state!=="playing")return;const dx=e.touches[0].clientX-tOrig.x,dy=e.touches[0].clientY-tOrig.y;keys["ArrowLeft"]=dx<-12;keys["ArrowRight"]=dx>12;keys["ArrowUp"]=dy<-12;keys["ArrowDown"]=dy>12;},{passive:false});
-canvas.addEventListener("touchend",e=>{e.preventDefault();["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].forEach(k=>keys[k]=false);if(state==="playing"){keys[" "]=true;setTimeout(()=>keys[" "]=false,120);}tOrig=null;},{passive:false});
-(function setupDpad(){
+canvas.addEventListener("touchmove",e=>{
+  e.preventDefault();
+  if(!tOrig||state!=="playing")return;
+  const dx=e.touches[0].clientX-tOrig.x,dy=e.touches[0].clientY-tOrig.y;
+  keys["ArrowLeft"]=dx<-12;keys["ArrowRight"]=dx>12;
+  keys["ArrowUp"]=dy<-12;keys["ArrowDown"]=dy>12;
+},{passive:false});
+canvas.addEventListener("touchend",e=>{
+  e.preventDefault();
+  ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].forEach(k=>keys[k]=false);
+  tOrig=null;
+},{passive:false});
+
+// ── CONTRÔLES MOBILES (D-PAD + BOUTONS) ──
+(function setupMobileControls(){
+  // D-Pad directionnel
   const dirs={"btn-up":"ArrowUp","btn-down":"ArrowDown","btn-left":"ArrowLeft","btn-right":"ArrowRight"};
   for(const[id,k]of Object.entries(dirs)){
-    const b=document.getElementById(id);
-    if(!b) continue;
-    // Empêche la propagation pour ne pas déclencher les événements du canvas
-    const startHandler = (e) => {
-      e.preventDefault();
-      e.stopPropagation(); // CRUCIAL : empêche le canvas de capter l'événement
-      keys[k] = true;
-    };
-    const endHandler = (e) => {
-      e.preventDefault();
-      e.stopPropagation(); // CRUCIAL
-      keys[k] = false;
-    };
-    b.addEventListener("touchstart", startHandler, {passive: false});
-    b.addEventListener("touchend", endHandler, {passive: false});
-    b.addEventListener("mousedown", startHandler);
-    b.addEventListener("mouseup", endHandler);
+    const b=document.getElementById(id);if(!b)continue;
+    const press=e=>{e.preventDefault();e.stopPropagation();keys[k]=true;b.classList.add("pressed");};
+    const release=e=>{e.preventDefault();e.stopPropagation();keys[k]=false;b.classList.remove("pressed");};
+    b.addEventListener("touchstart",press,{passive:false});
+    b.addEventListener("touchend",release,{passive:false});
+    b.addEventListener("touchcancel",release,{passive:false});
+    b.addEventListener("mousedown",press);
+    b.addEventListener("mouseup",release);
+    b.addEventListener("mouseleave",release);
   }
-  
-  const a = document.getElementById("btn-action");
-  if(a){
-    const actionStart = (e) => {
-      e.preventDefault();
-      e.stopPropagation(); // Empêche le canvas de recevoir l'événement
-      keys[" "] = true;
-      // Simulation d'une frappe ESPACE pour l'action immédiate (optionnel mais plus réactif)
-      const o = nearObj();
-      if(o) hitObj(o);
-      else {
-        for(let i=0;i<6;i++) parts.push({x:mk.x*TILE,y:mk.y*TILE,vx:(Math.random()-.5)*4,vy:-2-Math.random()*3,life:1,dec:.06,sz:5,col:"#ff88ff"});
-      }
+
+  // Bouton ACTION (💥) — frappe + menus
+  const ba=document.getElementById("btn-action");
+  if(ba){
+    const press=e=>{
+      e.preventDefault();e.stopPropagation();
+      ba.classList.add("pressed");
+      getAC();
+      if(state==="playing"){
+        const o=nearObj();
+        if(o)hitObj(o);
+        else for(let i=0;i<6;i++)parts.push({x:mk.x*TILE,y:mk.y*TILE,vx:(Math.random()-.5)*4,vy:-2-Math.random()*3,life:1,dec:.06,sz:5,col:"#ff88ff"});
+      } else if(state==="menu"){doMenuSel();}
+      else if(state==="loselife"){continuePlaying();}
+      else if(state==="dead"||state==="win"){fullReset();state="menu";}
+      else if(state==="loading"&&loadingProgress>=1){finishLoading();}
+      else if(state==="highscores"){state="menu";}
     };
-    const actionEnd = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      keys[" "] = false;
+    const release=e=>{e.preventDefault();e.stopPropagation();ba.classList.remove("pressed");};
+    ba.addEventListener("touchstart",press,{passive:false});
+    ba.addEventListener("touchend",release,{passive:false});
+    ba.addEventListener("touchcancel",release,{passive:false});
+    ba.addEventListener("mousedown",press);
+    ba.addEventListener("mouseup",release);
+  }
+
+  // Bouton OK — confirmer / continuer dans tous les menus
+  const mok=document.getElementById("mb-ok");
+  if(mok){
+    const press=e=>{
+      e.preventDefault();e.stopPropagation();
+      mok.classList.add("pressed");
+      getAC();
+      if(state==="menu")doMenuSel();
+      else if(state==="loselife")continuePlaying();
+      else if(state==="dead"||state==="win"){fullReset();state="menu";}
+      else if(state==="highscores")state="menu";
+      else if(state==="loading"&&loadingProgress>=1)finishLoading();
     };
-    a.addEventListener("touchstart", actionStart, {passive: false});
-    a.addEventListener("touchend", actionEnd, {passive: false});
-    a.addEventListener("mousedown", actionStart);
-    a.addEventListener("mouseup", actionEnd);
+    const rel=e=>{e.preventDefault();e.stopPropagation();mok.classList.remove("pressed");};
+    mok.addEventListener("touchstart",press,{passive:false});
+    mok.addEventListener("touchend",rel,{passive:false});
+    mok.addEventListener("mousedown",press);
+    mok.addEventListener("mouseup",rel);
+  }
+
+  // Bouton RETOUR
+  const mb=document.getElementById("mb-back");
+  if(mb){
+    const press=e=>{
+      e.preventDefault();e.stopPropagation();
+      mb.classList.add("pressed");
+      if(state==="options"||state==="highscores")state="menu";
+      else if(state==="menu"){menuSel=(menuSel-1+4)%4;} // nav menu haut
+    };
+    const rel=e=>{e.preventDefault();e.stopPropagation();mb.classList.remove("pressed");};
+    mb.addEventListener("touchstart",press,{passive:false});
+    mb.addEventListener("touchend",rel,{passive:false});
+    mb.addEventListener("mousedown",press);
+    mb.addEventListener("mouseup",rel);
+  }
+
+  // Bouton haut/bas menu via D-Pad en mode menu
+  const origUp=document.getElementById("btn-up");
+  const origDown=document.getElementById("btn-down");
+  if(origUp){
+    origUp.addEventListener("touchstart",e=>{
+      if(state==="menu"){e.preventDefault();e.stopPropagation();menuSel=(menuSel-1+4)%4;}
+    },{passive:false});
+  }
+  if(origDown){
+    origDown.addEventListener("touchstart",e=>{
+      if(state==="menu"){e.preventDefault();e.stopPropagation();menuSel=(menuSel+1)%4;}
+    },{passive:false});
   }
 })();
+
+// ── MANETTE (Gamepad API) ──
+let gpPrev={};
+function pollGamepad(){
+  const gps=navigator.getGamepads?navigator.getGamepads():[];
+  for(const gp of gps){
+    if(!gp)continue;
+    // Axes joystick gauche
+    const ax=gp.axes[0]||0,ay=gp.axes[1]||0;
+    keys["ArrowLeft"]=ax<-.4;keys["ArrowRight"]=ax>.4;
+    keys["ArrowUp"]=ay<-.4;keys["ArrowDown"]=ay>.4;
+    // Croix directionnelle (dpad)
+    if(gp.buttons[12])keys["ArrowUp"]=gp.buttons[12].pressed;
+    if(gp.buttons[13])keys["ArrowDown"]=gp.buttons[13].pressed;
+    if(gp.buttons[14])keys["ArrowLeft"]=gp.buttons[14].pressed;
+    if(gp.buttons[15])keys["ArrowRight"]=gp.buttons[15].pressed;
+    // Bouton A/X = action / confirmer
+    const btnA=gp.buttons[0]?.pressed;
+    const btnB=gp.buttons[1]?.pressed;
+    const btnStart=gp.buttons[9]?.pressed;
+    const id=gp.index;
+    if(!gpPrev[id])gpPrev[id]={btnA:false,btnB:false,btnStart:false};
+    // Action (A) pressé ce frame
+    if(btnA&&!gpPrev[id].btnA){
+      if(state==="playing"){const o=nearObj();if(o)hitObj(o);else keys[" "]=true;setTimeout(()=>keys[" "]=false,120);}
+      else if(state==="menu")doMenuSel();
+      else if(state==="loselife")continuePlaying();
+      else if(state==="dead"||state==="win"){fullReset();state="menu";}
+      else if(state==="loading"&&loadingProgress>=1)finishLoading();
+      else if(state==="highscores")state="menu";
+    }
+    // B = retour
+    if(btnB&&!gpPrev[id].btnB){
+      if(state==="options"||state==="highscores")state="menu";
+    }
+    // Start = menu
+    if(btnStart&&!gpPrev[id].btnStart){
+      if(state==="playing"||state==="loselife"||state==="dead"||state==="win"){fullReset();state="menu";}
+    }
+    gpPrev[id]={btnA,btnB,btnStart};
+  }
+}
 
 // ── LOGIQUE OBJETS ──
 function nearObj(){for(const o of objs){if(!o.ok)continue;const cx=o.x+o.w/2-.5,cy=o.y+o.h/2-.5;if(Math.abs(mk.x-cx)<1.4&&Math.abs(mk.y-cy)<1.4)return o;}return null;}
 function spawnParts(px,py,n,col){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=1.5+Math.random()*3.5;parts.push({x:px,y:py,vx:Math.cos(a)*s,vy:Math.sin(a)*s-2,life:1,dec:.025+Math.random()*.03,sz:3+Math.random()*6,col});}}
 function hitObj(o){
   o.hp--;
-  felix.chasing=true;felix.alert=Math.min(1,felix.alert+.4);
-  // En mode difficile, Lili aussi réagit quand Moka casse un objet
+  felix.alert=Math.min(1,felix.alert+.4);
+  // Augmenter rage de Felix quand Moka casse quelque chose
+  felix.rage=Math.min(3,felix.rage+1);
+  applyFelixRageBehavior();
   if(difficulty==="difficile"){lili.chasing=true;}
   spawnParts((o.x+o.w/2)*TILE,(o.y+o.h/2)*TILE,5,o.t==="sofa"?"#e8e8ff":o.t==="box"?"#d4a030":"#ff8866");
-  snd("smash");if(o.hp<=0){o.ok=false;score+=o.pts;niaiseries++;rubble.push({...o});spawnParts((o.x+o.w/2)*TILE,(o.y+o.h/2)*TILE,o.t==="sofa"?22:10,o.t==="sofa"?"#e8e8ff":o.t==="box"?"#d4a030":"#ff8866");}
+  snd("smash");
+  if(o.hp<=0){o.ok=false;score+=o.pts;niaiseries++;rubble.push({...o});spawnParts((o.x+o.w/2)*TILE,(o.y+o.h/2)*TILE,o.t==="sofa"?22:10,o.t==="sofa"?"#e8e8ff":o.t==="box"?"#d4a030":"#ff8866");}
 }
 
-// ── FELIX (ex robot chasseur) ──
+function applyFelixRageBehavior(){
+  if(felix.rage===1){
+    // Stade 1: Felix veut réparer, retourne au ménage
+    felix.chasing=false;
+    felix.rageChaseDur=0;
+    snd("repair");
+  } else if(felix.rage===2){
+    // Stade 2: Felix poursuit brièvement puis retour ménage
+    felix.chasing=true;
+    felix.rageChaseDur=3.5; // secondes de poursuite
+    snd("angry");
+  } else if(felix.rage>=3){
+    // Stade 3: Felix poursuit en permanence
+    felix.chasing=true;
+    felix.rageChaseDur=-1; // infini
+    snd("angry");
+  }
+}
+
+// ── FELIX ──
 function updateFelix(dt){
   felix.alert=Math.max(0,felix.alert-dt*.015);
   const cfg=getDiffConfig();
   const dist=Math.hypot(mk.x-felix.x,mk.y-felix.y);
-  if(!felix.chasing&&dist<cfg.felixChaseRange)felix.chasing=true;
-  if(felix.chasing&&!cfg.felixChaseKeep&&dist>cfg.felixChaseRange+2&&felix.alert<.1)felix.chasing=false;
+  // Bonus vitesse par niveau (niveau 1: +0, niveau 2: +0.25, niveau 3: +0.5)
+  const levelSpeedBonus=(currentLevel-1)*0.25;
+
+  // Gestion chasse selon rage
+  if(felix.rage===0){
+    // Comportement original: détection range
+    if(!felix.chasing&&dist<cfg.felixChaseRange)felix.chasing=true;
+    if(felix.chasing&&!cfg.felixChaseKeep&&dist>cfg.felixChaseRange+2&&felix.alert<.1)felix.chasing=false;
+  } else if(felix.rage===1){
+    // Réparer: felix ne chasse pas, fait son ménage
+    felix.chasing=false;
+    if(!cfg.felixChaseKeep&&dist<cfg.felixChaseRange*.5)felix.chasing=true; // seulement si très proche
+  } else if(felix.rage===2){
+    // Poursuite temporaire
+    if(felix.rageChaseDur>0){
+      felix.rageChaseDur-=dt;
+      felix.chasing=true;
+      if(felix.rageChaseDur<=0){felix.chasing=false;felix.rageChaseDur=0;}
+    }
+    // Réactivation si Moka casse encore
+    if(!felix.chasing&&dist<cfg.felixChaseRange)felix.chasing=true;
+  } else {
+    // Rage 3: chasse permanente
+    felix.chasing=true;
+  }
+
   let tx,ty;
   if(felix.chasing){tx=mk.x;ty=mk.y;}
-  else{const lvl=LEVEL_DEFS[currentLevel-1];const wp=lvl.felixWP[felix.wp];tx=wp[0];ty=wp[1];if(Math.hypot(felix.x-tx,felix.y-ty)<.3)felix.wp=(felix.wp+1)%lvl.felixWP.length;}
-  const spd=cfg.felixSpeed+(t/90)*.3+(felix.chasing?1.3:0);
+  else{
+    const lvl=LEVEL_DEFS[currentLevel-1];
+    const wp=lvl.felixWP[felix.wp];tx=wp[0];ty=wp[1];
+    if(Math.hypot(felix.x-tx,felix.y-ty)<.3)felix.wp=(felix.wp+1)%lvl.felixWP.length;
+  }
+  const spd=cfg.felixSpeed+levelSpeedBonus+(t/90)*.3+(felix.chasing?(felix.rage>=3?1.8:1.3):0);
   const rdx=tx-felix.x,rdy=ty-felix.y,rd=Math.hypot(rdx,rdy);
   if(rd>.1){felix.x+=rdx/rd*spd*dt;felix.y+=rdy/rd*spd*dt;if(Math.abs(rdx)>Math.abs(rdy))felix.dir=rdx>0?"droite":"gauche";else felix.dir=rdy>0?"bas":"haut";}
   felix.ft+=dt;if(felix.ft>.18){felix.frame++;felix.ft=0;}
 }
 
-// ── LILI (ménage, femme blonde) ──
+// ── LILI ──
 function updateLili(dt){
   const cfg=getDiffConfig();
   const distMoka=Math.hypot(mk.x-lili.x,mk.y-lili.y);
@@ -334,33 +535,65 @@ function updateLili(dt){
   lili.ft+=dt;if(lili.ft>.22){lili.frame++;lili.ft=0;}
 }
 
-// ── CHOUPI ──
+// ── CHOUPI — fuite vers coin opposé + banane toute la carte ──
+// 5 zones refuge Choupi : 4 coins + centre
+const REFUGE_ZONES=[
+  [.8,.5],           // coin haut-gauche
+  [COLS-1.5,.5],     // coin haut-droite
+  [.8,ROWS-1.2],     // coin bas-gauche
+  [COLS-1.5,ROWS-1.2], // coin bas-droite
+  [COLS/2,ROWS/2],   // centre
+];
+function getFurthestRefuge(cx,cy){
+  // Zone refuge la plus éloignée de la position actuelle de Choupi
+  let best=REFUGE_ZONES[0],bd=0;
+  for(const c of REFUGE_ZONES){
+    const d=Math.hypot(c[0]-cx,c[1]-cy);
+    if(d>bd){bd=d;best=c;}
+  }
+  return best;
+}
+
 function updateChoupi(dt){
+  ch.fearAnim+=dt;
   const dm=Math.hypot(mk.x-ch.x,mk.y-ch.y);
-  if(!ch.fleeing&&dm<2.2){
-    ch.fleeing=true;ch.fleeTimer=3+Math.random()*2;
-    const a=Math.atan2(ch.y-mk.y,ch.x-mk.x);ch.vx=Math.cos(a);ch.vy=Math.sin(a);
+
+  // Chasse banane — TOUTE LA CARTE (plus de limite de distance)
+  if(bn.active&&dm>1.5){ // ne chase banane que si pas en danger immédiat
+    const dx=bn.x-ch.x,dy=bn.y-ch.y,db=Math.hypot(dx,dy);
+    if(db>.1&&!ch.fleeing){
+      ch.x+=dx/db*2.0*dt;ch.y+=dy/db*2.0*dt;
+      if(Math.abs(dx)>Math.abs(dy))ch.dir=dx>0?"droite":"gauche";else ch.dir=dy>0?"bas":"dos";
+    }
+    if(db<.7){bn.active=false;bn.spawnIn=20+Math.random()*20;spawnParts(bn.x*TILE,bn.y*TILE,8,"#ffe066");snd("banane");return;}
+    if(!ch.fleeing)return;
+  }
+
+  // Déclenchement fuite si Moka trop proche
+  if(!ch.fleeing&&dm<2.5){
+    ch.fleeing=true;
+    ch.fleeTimer=4+Math.random()*2;
+    ch.targetCorner=getFurthestRefuge(ch.x,ch.y);
     snd("choupi");
   }
-  // Choupi chase banana
-  if(bn.active){
-    const db=Math.hypot(ch.x-bn.x,ch.y-bn.y);
-    if(db<3.5){
-      const dx=bn.x-ch.x,dy=bn.y-ch.y,d=Math.hypot(dx,dy);
-      if(d>.1){ch.x+=dx/d*1.8*dt;ch.y+=dy/d*1.8*dt;}
-      if(Math.abs(dx)>Math.abs(dy))ch.dir=dx>0?"droite":"gauche";else ch.dir=dy>0?"bas":"dos";
-      if(db<.7){bn.active=false;bn.spawnIn=20+Math.random()*20;spawnParts(bn.x*TILE,bn.y*TILE,8,"#ffe066");}
-      return;
-    }
-  }
+
   if(ch.fleeing){
     ch.fleeTimer-=dt;
-    if(dm<2.2){const a=Math.atan2(ch.y-mk.y,ch.x-mk.x);ch.vx=Math.cos(a);ch.vy=Math.sin(a);}
-    if(ch.x<=.5||ch.x>=COLS-1.5)ch.vx*=-1;if(ch.y<=.3||ch.y>=ROWS-1)ch.vy*=-1;
-    ch.x=Math.max(.5,Math.min(COLS-1.5,ch.x+ch.vx*2.8*dt));
-    ch.y=Math.max(.3,Math.min(ROWS-1,ch.y+ch.vy*2.8*dt));
-    if(Math.abs(ch.vx)>Math.abs(ch.vy))ch.dir=ch.vx>0?"droite":"gauche";else ch.dir=ch.vy>0?"bas":"dos";
-    if(ch.fleeTimer<=0&&dm>2.2)ch.fleeing=false;
+    // Recalculer zone refuge si Moka se rapproche encore
+    if(dm<1.8){ch.targetCorner=getFurthestRefuge(ch.x,ch.y);}
+
+    // Aller vers le coin cible
+    if(ch.targetCorner){
+      const dx=ch.targetCorner[0]-ch.x,dy=ch.targetCorner[1]-ch.y,d=Math.hypot(dx,dy);
+      const atCorner=d<.5;
+      if(!atCorner&&d>.05){
+        const spd=3.2+Math.max(0,(2.5-dm)*.5); // plus vite si Moka proche
+        ch.x+=dx/d*spd*dt;ch.y+=dy/d*spd*dt;
+        if(Math.abs(dx)>Math.abs(dy))ch.dir=dx>0?"droite":"gauche";else ch.dir=dy>0?"bas":"dos";
+      }
+    }
+    ch.x=Math.max(.5,Math.min(COLS-1.5,ch.x));ch.y=Math.max(.3,Math.min(ROWS-1,ch.y));
+    if(ch.fleeTimer<=0&&dm>3.0){ch.fleeing=false;ch.targetCorner=null;}
   }
 }
 
@@ -373,7 +606,6 @@ function updateBanane(dt){
 
 // ── SALLE DE JEU ──
 function getRoomStyle(){return LEVEL_DEFS[currentLevel-1].roomStyle;}
-
 function drawRoom(){
   const style=getRoomStyle();
   if(style==="salon"){
@@ -386,7 +618,6 @@ function drawRoom(){
     ctx.fillStyle="#b3d4ff";ctx.fillRect(0,0,W,H);
     for(let r=0;r<ROWS+1;r++)for(let c=0;c<COLS;c++){ctx.fillStyle=(r+c)%2===0?"#e8e8e8":"#d0d0d0";ctx.fillRect(c*TILE,r*TILE,TILE,TILE);ctx.strokeStyle="#aaa";ctx.lineWidth=.5;ctx.strokeRect(c*TILE,r*TILE,TILE,TILE);}
     ctx.fillStyle="#f0f0f0";ctx.fillRect(0,0,W,2*TILE);ctx.fillStyle="#ccc";ctx.fillRect(0,2*TILE-6,W,6);
-    // Fenêtre déco cuisine
     ctx.fillStyle="rgba(100,180,255,.18)";ctx.fillRect(4*TILE,0,3*TILE,2*TILE);
     ctx.strokeStyle="rgba(100,180,255,.5)";ctx.lineWidth=2;ctx.strokeRect(4*TILE+4,4,3*TILE-8,2*TILE-8);ctx.lineWidth=1;
     ctx.fillStyle="rgba(100,180,255,.15)";ctx.fillRect(5*TILE-2,0,2,2*TILE);ctx.fillRect(4*TILE,TILE-2,3*TILE,2);
@@ -394,7 +625,6 @@ function drawRoom(){
     ctx.fillStyle="#c4b3ff";ctx.fillRect(0,0,W,H);
     for(let r=0;r<ROWS+1;r++)for(let c=0;c<COLS;c++){ctx.fillStyle=(r+c)%2===0?"#9b8ec4":"#8a7db3";ctx.fillRect(c*TILE,r*TILE,TILE,TILE);ctx.strokeStyle="#6a5d93";ctx.lineWidth=.5;ctx.strokeRect(c*TILE,r*TILE,TILE,TILE);}
     ctx.fillStyle="#ddd0ff";ctx.fillRect(0,0,W,2*TILE);ctx.fillStyle="#a090cc";ctx.fillRect(0,2*TILE-6,W,6);
-    // Motif étoiles chambre
     for(let i=0;i<20;i++){ctx.fillStyle=`rgba(255,255,220,${.1+Math.sin(i*7)*0.05})`;ctx.beginPath();ctx.arc((i*137)%W,((i*97)%H),2,0,Math.PI*2);ctx.fill();}
   }
 }
@@ -439,11 +669,26 @@ function drawChoupi(x,y,dir){
   const px=Math.round(x*TILE-TILE/2),py=Math.round(y*TILE-TILE/2);
   const dm={droite:"choupi_droite",gauche:"choupi_gauche",dos:"choupi_dos",bas:"choupi_bas"};
   const img=imgs[dm[dir]||"choupi_bas"];
-  if(img&&img.complete&&img.naturalWidth>0){ctx.drawImage(img,px,py,TILE,TILE);return;}
+  // Animation de peur si fleeing
+  if(ch.fleeing){
+    ctx.save();
+    const shake=Math.sin(ch.fearAnim*20)*(Math.random()>.5?1.5:-1.5);
+    ctx.translate(shake,0);
+    if(img&&img.complete&&img.naturalWidth>0){ctx.drawImage(img,px,py,TILE,TILE);}
+    else{drawChoupiPixel(px,py);}
+    // Petit "!" de peur
+    ctx.fillStyle="#fff200";ctx.font="bold 12px monospace";ctx.textAlign="center";ctx.fillText("!",px+TILE/2,py-3);ctx.textAlign="left";
+    ctx.restore();
+  } else {
+    if(img&&img.complete&&img.naturalWidth>0){ctx.drawImage(img,px,py,TILE,TILE);}
+    else{drawChoupiPixel(px,py);}
+  }
+}
+function drawChoupiPixel(px,py){
   const s=TILE/16;ctx.save();ctx.fillStyle="#f0c060";ctx.fillRect(px+3*s,py+5*s,10*s,8*s);ctx.fillRect(px+4*s,py+s,8*s,6*s);ctx.fillStyle="#e0a040";ctx.fillRect(px+3*s,py-s,3*s,3*s);ctx.fillRect(px+10*s,py-s,3*s,3*s);ctx.fillStyle="#33aa33";ctx.fillRect(px+5*s,py+3*s,2*s,2*s);ctx.fillRect(px+9*s,py+3*s,2*s,2*s);ctx.fillStyle="#e0a040";ctx.fillRect(px+13*s,py+7*s,3*s,s);ctx.restore();
 }
 
-// ── DESSIN FÉLIX (humain chasseur) ──
+// ── DESSIN FÉLIX (avec barbe) ──
 function drawFelix(x,y,dir,fr,chasing){
   const px=Math.round(x),py=Math.round(y),s=TILE/16;
   const bob=(fr%2===0?0:s*.5);
@@ -451,112 +696,91 @@ function drawFelix(x,y,dir,fr,chasing){
   ctx.save();
   if(dir==="gauche"){ctx.translate(px+TILE/2,0);ctx.scale(-1,1);ctx.translate(-px-TILE/2,0);}
   // Jambes
-  const legOff=fr%4<2?s:0;
   ctx.fillStyle=chasing?"#883300":"#334488";
-  ctx.fillRect(px+4*s,by+11*s,3*s,4*s); // jambe gauche
-  ctx.fillRect(px+9*s,by+11*s-(fr%4<2?s:0),3*s,4*s+(fr%4<2?s:0)); // jambe droite animée
+  ctx.fillRect(px+4*s,by+11*s,3*s,4*s);
+  ctx.fillRect(px+9*s,by+11*s-(fr%4<2?s:0),3*s,4*s+(fr%4<2?s:0));
   // Chaussures
-  ctx.fillStyle="#222";
-  ctx.fillRect(px+3*s,by+14*s,4*s,2*s);
-  ctx.fillRect(px+9*s,by+14*s,4*s,2*s);
+  ctx.fillStyle="#222";ctx.fillRect(px+3*s,by+14*s,4*s,2*s);ctx.fillRect(px+9*s,by+14*s,4*s,2*s);
   // Corps
-  ctx.fillStyle=chasing?"#cc4422":"#4466cc";
-  ctx.fillRect(px+3*s,by+6*s,10*s,6*s);
+  ctx.fillStyle=chasing?"#cc4422":"#4466cc";ctx.fillRect(px+3*s,by+6*s,10*s,6*s);
   // Bras
   ctx.fillStyle=chasing?"#aa3311":"#3355bb";
-  ctx.fillRect(px+s,by+6*s,3*s,4*s);  // bras gauche
-  ctx.fillRect(px+12*s,by+6*s+(fr%4<2?s:0),3*s,4*s); // bras droit animé
+  ctx.fillRect(px+s,by+6*s,3*s,4*s);
+  ctx.fillRect(px+12*s,by+6*s+(fr%4<2?s:0),3*s,4*s);
   // Cou
-  ctx.fillStyle="#ffcc99";
-  ctx.fillRect(px+6*s,by+4*s,4*s,3*s);
+  ctx.fillStyle="#ffcc99";ctx.fillRect(px+6*s,by+4*s,4*s,3*s);
   // Tête
-  ctx.fillStyle="#ffcc99";
-  ctx.fillRect(px+4*s,by+s,8*s,5*s);
+  ctx.fillStyle="#ffcc99";ctx.fillRect(px+4*s,by+s,8*s,5*s);
   // Cheveux brun
-  ctx.fillStyle="#4a2800";
-  ctx.fillRect(px+4*s,by,8*s,2*s);
-  ctx.fillRect(px+3*s,by+s,2*s,2*s);
+  ctx.fillStyle="#4a2800";ctx.fillRect(px+4*s,by,8*s,2*s);ctx.fillRect(px+3*s,by+s,2*s,2*s);
+  // ── BARBE ── (trait distinctif de Félix)
+  const beardCol=chasing?"#6b1a00":"#3a1a00"; // barbe plus sombre quand en colère
+  ctx.fillStyle=beardCol;
+  ctx.fillRect(px+4*s,by+4*s,8*s,2*s);   // moustache / haut barbe
+  ctx.fillRect(px+3*s,by+5*s,2*s,2*s);   // joue gauche barbe
+  ctx.fillRect(px+11*s,by+5*s,2*s,2*s);  // joue droite barbe
+  ctx.fillRect(px+4*s,by+5*s,8*s,s);     // base barbe
+  // Détails barbe (poils) en mode rage
+  if(chasing&&felix.rage>=2){
+    ctx.fillStyle="#8b2200";
+    ctx.fillRect(px+5*s,by+6*s,s,s);
+    ctx.fillRect(px+7*s,by+6*s,s,s);
+    ctx.fillRect(px+9*s,by+6*s,s,s);
+  }
   // Yeux
-  ctx.fillStyle=chasing?"#ff2200":"#222";
-  ctx.fillRect(px+5*s,by+2*s,2*s,2*s);
-  ctx.fillRect(px+9*s,by+2*s,2*s,2*s);
-  // Bouche (crié si chasing)
-  if(chasing){ctx.fillStyle="#aa0000";ctx.fillRect(px+6*s,by+4*s,4*s,s);}
-  else{ctx.fillStyle="#cc8866";ctx.fillRect(px+7*s,by+4*s,2*s,s);}
-  // Indicateur alerte
+  ctx.fillStyle=chasing?(felix.rage>=3?"#ff0000":"#ff2200"):"#222";
+  ctx.fillRect(px+5*s,by+2*s,2*s,2*s);ctx.fillRect(px+9*s,by+2*s,2*s,2*s);
+  // Sourcils selon rage
+  if(felix.rage>=2){
+    ctx.fillStyle="#3a1a00";
+    ctx.fillRect(px+5*s,by+s,2*s,s);    // sourcil gauche froncé
+    ctx.fillRect(px+9*s,by+s,2*s,s);    // sourcil droit froncé
+  }
+  // Bouche
   if(chasing){
-    ctx.fillStyle="rgba(255,50,0,.9)";ctx.font="bold 10px monospace";ctx.textAlign="center";
-    ctx.fillText("!",px+TILE/2,py-3);
+    ctx.fillStyle="#aa0000";
+    if(felix.rage>=3){
+      // Cri/grognement
+      ctx.fillRect(px+5*s,by+4*s,6*s,2*s);
+      ctx.fillStyle="#fff";ctx.fillRect(px+6*s,by+4*s,s,s);ctx.fillRect(px+8*s,by+4*s,s,s); // dents
+    } else {
+      ctx.fillRect(px+6*s,by+4*s,4*s,s);
+    }
+  } else {
+    ctx.fillStyle="#cc8866";ctx.fillRect(px+7*s,by+4*s,2*s,s);
+  }
+  // Indicateur de rage
+  if(felix.rage>=1){
+    const rageStr=felix.rage===1?"😤":felix.rage===2?"😠":"😡";
+    ctx.font="10px monospace";ctx.textAlign="center";ctx.fillText(rageStr,px+TILE/2,py-2);
+    if(chasing&&felix.rage>=3){
+      ctx.fillStyle="rgba(255,50,0,.9)";ctx.font="bold 10px monospace";ctx.fillText("!",px+TILE/2-8,py-2);
+    }
+  } else if(chasing){
+    ctx.fillStyle="rgba(255,50,0,.9)";ctx.font="bold 10px monospace";ctx.fillText("!",px+TILE/2,py-3);
   }
   ctx.restore();
 }
 
-// ── DESSIN LILI (femme blonde ménage) ──
+// ── DESSIN LILI ──
 function drawLili(x,y,dir,fr,chasing){
   const px=Math.round(x),py=Math.round(y),s=TILE/16;
-  const bob=(fr%2===0?0:s*.4);
-  const by=py+bob;
+  const bob=(fr%2===0?0:s*.4);const by=py+bob;
   ctx.save();
   if(dir==="gauche"){ctx.translate(px+TILE/2,0);ctx.scale(-1,1);ctx.translate(-px-TILE/2,0);}
-  // Jupe / jambes
-  ctx.fillStyle=chasing?"#cc2288":"#aa44cc";
-  ctx.fillRect(px+4*s,by+10*s,8*s,5*s); // jupe
-  // Jambes sous jupe
-  ctx.fillStyle="#ffcc99";
-  ctx.fillRect(px+5*s,by+13*s,2*s,3*s);
-  ctx.fillRect(px+9*s,by+13*s,2*s,3*s);
-  // Chaussures roses
-  ctx.fillStyle="#ff88bb";
-  ctx.fillRect(px+4*s,by+15*s,3*s,s);
-  ctx.fillRect(px+9*s,by+15*s,3*s,s);
-  // Corps
-  ctx.fillStyle=chasing?"#ee3399":"#cc55ee";
-  ctx.fillRect(px+4*s,by+5*s,8*s,6*s);
-  // Bras
-  ctx.fillStyle="#ffcc99";
-  ctx.fillRect(px+2*s,by+5*s,3*s,4*s);
-  ctx.fillRect(px+11*s,by+5*s+(fr%4<2?s:0),3*s,4*s);
-  // Manche
-  ctx.fillStyle=chasing?"#ee3399":"#cc55ee";
-  ctx.fillRect(px+2*s,by+5*s,3*s,2*s);
-  ctx.fillRect(px+11*s,by+5*s,3*s,2*s);
-  // Cou
-  ctx.fillStyle="#ffcc99";
-  ctx.fillRect(px+6*s,by+3*s,4*s,3*s);
-  // Tête
-  ctx.fillStyle="#ffcc99";
-  ctx.fillRect(px+4*s,by,8*s,5*s);
-  // Cheveux blonds ondulés
-  ctx.fillStyle="#ffe033";
-  ctx.fillRect(px+3*s,by,10*s,2*s);
-  ctx.fillRect(px+2*s,by+s,2*s,4*s);  // cheveux longs gauche
-  ctx.fillRect(px+12*s,by+s,2*s,4*s); // cheveux longs droite
-  ctx.fillRect(px+3*s,by-s,3*s,2*s);  // sommet
-  ctx.fillRect(px+10*s,by-s,3*s,2*s);
-  // Yeux
-  ctx.fillStyle=chasing?"#ff0088":"#4444aa";
-  ctx.fillRect(px+5*s,by+2*s,2*s,2*s);
-  ctx.fillRect(px+9*s,by+2*s,2*s,2*s);
-  // Cils
-  ctx.fillStyle="#222";
-  ctx.fillRect(px+5*s,by+s,s,s);
-  ctx.fillRect(px+9*s,by+s,s,s);
-  // Bouche
-  ctx.fillStyle="#ff8899";
-  ctx.fillRect(px+7*s,by+4*s,2*s,s);
-  // Outil ménage (balai) si pas en chasse
-  if(!chasing){
-    ctx.fillStyle="#8b5e2a";
-    ctx.fillRect(px+13*s,by+3*s,s,10*s); // manche
-    ctx.fillStyle="#aaa";
-    ctx.fillRect(px+11*s,by+12*s,5*s,s); // brosse
-    // Petites étoiles ménage
-    ctx.fillStyle="#ffddff";
-    if(Math.floor(lili.hairAnim*4)%2===0){
-      ctx.fillRect(px+14*s,by+2*s,s,s);
-      ctx.fillRect(px+12*s,by+s,s,s);
-    }
-  }
+  ctx.fillStyle=chasing?"#cc2288":"#aa44cc";ctx.fillRect(px+4*s,by+10*s,8*s,5*s);
+  ctx.fillStyle="#ffcc99";ctx.fillRect(px+5*s,by+13*s,2*s,3*s);ctx.fillRect(px+9*s,by+13*s,2*s,3*s);
+  ctx.fillStyle="#ff88bb";ctx.fillRect(px+4*s,by+15*s,3*s,s);ctx.fillRect(px+9*s,by+15*s,3*s,s);
+  ctx.fillStyle=chasing?"#ee3399":"#cc55ee";ctx.fillRect(px+4*s,by+5*s,8*s,6*s);
+  ctx.fillStyle="#ffcc99";ctx.fillRect(px+2*s,by+5*s,3*s,4*s);ctx.fillRect(px+11*s,by+5*s+(fr%4<2?s:0),3*s,4*s);
+  ctx.fillStyle=chasing?"#ee3399":"#cc55ee";ctx.fillRect(px+2*s,by+5*s,3*s,2*s);ctx.fillRect(px+11*s,by+5*s,3*s,2*s);
+  ctx.fillStyle="#ffcc99";ctx.fillRect(px+6*s,by+3*s,4*s,3*s);
+  ctx.fillStyle="#ffcc99";ctx.fillRect(px+4*s,by,8*s,5*s);
+  ctx.fillStyle="#ffe033";ctx.fillRect(px+3*s,by,10*s,2*s);ctx.fillRect(px+2*s,by+s,2*s,4*s);ctx.fillRect(px+12*s,by+s,2*s,4*s);ctx.fillRect(px+3*s,by-s,3*s,2*s);ctx.fillRect(px+10*s,by-s,3*s,2*s);
+  ctx.fillStyle=chasing?"#ff0088":"#4444aa";ctx.fillRect(px+5*s,by+2*s,2*s,2*s);ctx.fillRect(px+9*s,by+2*s,2*s,2*s);
+  ctx.fillStyle="#222";ctx.fillRect(px+5*s,by+s,s,s);ctx.fillRect(px+9*s,by+s,s,s);
+  ctx.fillStyle="#ff8899";ctx.fillRect(px+7*s,by+4*s,2*s,s);
+  if(!chasing){ctx.fillStyle="#8b5e2a";ctx.fillRect(px+13*s,by+3*s,s,10*s);ctx.fillStyle="#aaa";ctx.fillRect(px+11*s,by+12*s,5*s,s);ctx.fillStyle="#ffddff";if(Math.floor(lili.hairAnim*4)%2===0){ctx.fillRect(px+14*s,by+2*s,s,s);ctx.fillRect(px+12*s,by+s,s,s);}}
   ctx.restore();
 }
 
@@ -573,7 +797,11 @@ function drawBanane(){
 
 // ── MENUS ──
 function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();}
-function drawBtn(label,cy,sel,col){const x=W/2-130,w=260,h=38;ctx.fillStyle=sel?col:"#ddd";ctx.strokeStyle="#333";ctx.lineWidth=2;rr(x,cy,w,h,8);ctx.fill();ctx.stroke();ctx.fillStyle=sel?"#fff":"#333";ctx.font="bold 15px monospace";ctx.textAlign="center";ctx.fillText(label,W/2,cy+h/2+5);ctx.textAlign="left";}
+function drawBtn(label,cy,sel,col,w2=260,x2=null){
+  const x=x2!==null?x2:W/2-w2/2,h=38;
+  ctx.fillStyle=sel?col:"#ddd";ctx.strokeStyle="#333";ctx.lineWidth=2;rr(x,cy,w2,h,8);ctx.fill();ctx.stroke();
+  ctx.fillStyle=sel?"#fff":"#333";ctx.font="bold 15px monospace";ctx.textAlign="center";ctx.fillText(label,x+w2/2,cy+h/2+5);ctx.textAlign="left";
+}
 
 function drawMenu(){
   ctx.fillStyle="#fff8f0";ctx.fillRect(0,0,W,H);
@@ -586,8 +814,10 @@ function drawMenu(){
   drawBtn("⚙  OPTIONS",230,menuSel===1,"#8855ff");
   drawBtn("🏆  HIGH-SCORES",280,menuSel===2,"#ff8800");
   drawBtn("📚  ACHETER MA BD MOKA",330,menuSel===3,"#22aa55");
-  ctx.font="10px monospace";ctx.fillStyle="#bbb";ctx.textAlign="center";
-  ctx.fillStyle="#000000";ctx.fillText("2026 Créations Éliane Demers TM version 0",W/2,403);ctx.textAlign="left";
+  // Indicateur mobile
+  ctx.font="10px monospace";ctx.fillStyle="#aaa";ctx.textAlign="center";
+  ctx.fillText("📱 Mobile: D-Pad + ✅OK   🎮 Manette: supportée",W/2,380);
+  ctx.fillStyle="#000000";ctx.fillText("2026 Créations Éliane Demers TM version 2",W/2,403);ctx.textAlign="left";
 }
 
 function drawOptions(){
@@ -601,7 +831,7 @@ function drawOptions(){
   drawBtn(soundMuted?"OFF  ✕":"ON  ✓",170,false,soundMuted?"#cc4444":"#44aa44");
   ctx.fillText("🎮  DIFFICULTÉ",W/2-140,260);
   drawBtn(difficulty==="facile"?"FACILE  😊":"DIFFICILE  😤",230,false,difficulty==="facile"?"#44aaff":"#ff6622");
-  ctx.font="12px monospace";ctx.fillStyle="#888";ctx.textAlign="center";ctx.fillText("Cliquez pour basculer",W/2,290);
+  ctx.font="12px monospace";ctx.fillStyle="#888";ctx.textAlign="center";ctx.fillText("Cliquez/tapez pour basculer",W/2,290);
   drawBtn("← RETOUR MENU",355,false,"#888");ctx.textAlign="left";
 }
 
@@ -617,7 +847,7 @@ function drawHighScores(){
     ctx.textAlign="left";ctx.fillText(`${i<3?medals[i]:"#"+(i+1)}  ${s.name.slice(0,8).padEnd(8)}`,W/2-160,y);
     ctx.textAlign="right";ctx.fillText(String(s.score).padStart(6,"0"),W/2+160,y);
   });
-  ctx.fillStyle="#888";ctx.font="13px monospace";ctx.textAlign="center";ctx.fillText("Cliquez pour retourner au menu",W/2,405);ctx.textAlign="left";
+  ctx.fillStyle="#888";ctx.font="13px monospace";ctx.textAlign="center";ctx.fillText("Cliquez / ✅OK pour retourner au menu",W/2,405);ctx.textAlign="left";
 }
 
 // ── PAGE PERTE DE VIE ──
@@ -627,12 +857,10 @@ function drawLoseLife(){
   ctx.fillStyle="#ff4444";ctx.font="bold 26px monospace";ctx.fillText("😱 OH NON MOKA ! 😱",W/2,80);
   ctx.fillStyle="#ffaaaa";ctx.font="15px monospace";ctx.fillText("Moka s'est fait attraper...",W/2,115);
   ctx.fillStyle="#fff200";ctx.font="bold 16px monospace";ctx.fillText("Il reste encore une chance !",W/2,155);
-  // Coeurs restants
   ctx.font="28px monospace";ctx.fillText("❤️",W/2,200);
   ctx.fillStyle="#ffcc44";ctx.font="13px monospace";ctx.fillText("1 VIE RESTANTE",W/2,230);
-  // Bouton continuer
   drawBtn("▶  CONTINUER",260,false,"#ff3388");
-  ctx.fillStyle="#aaa";ctx.font="12px monospace";ctx.fillText("Cliquez ou appuyez ESPACE",W/2,315);
+  ctx.fillStyle="#aaa";ctx.font="12px monospace";ctx.fillText("Tap ✅OK • Cliquez • Appuyez ESPACE",W/2,315);
   ctx.textAlign="left";
 }
 
@@ -647,7 +875,6 @@ function drawEnd(won){
   ctx.fillStyle="#aaa";ctx.font="11px monospace";ctx.fillText("Niaiseries: "+niaiseries+"  Hi-Score: "+String(hiScore).padStart(6,"0"),W/2,104);
   ctx.fillStyle="#ff6b9d";ctx.fillRect(W/2-120,114,240,2);
   ctx.fillStyle="#fff";ctx.font="bold 12px monospace";ctx.fillText("📚 Moka est aussi dans une BD !",W/2,132);
-  // Cover cliquable
   const ci=imgs["cover"],cw=90,ch2=112,cx2=W/2-45,cy2=140;
   if(ci&&ci.complete&&ci.naturalWidth>0){ctx.drawImage(ci,cx2,cy2,cw,ch2);ctx.strokeStyle="#fff200";ctx.lineWidth=3;ctx.strokeRect(cx2,cy2,cw,ch2);}
   else{ctx.fillStyle="#335522";ctx.fillRect(cx2,cy2,cw,ch2);ctx.fillStyle="#fff";ctx.font="12px monospace";ctx.fillText("MOKA BD",W/2,cy2+ch2/2);}
@@ -656,21 +883,112 @@ function drawEnd(won){
   ctx.fillStyle="#ff6b9d";ctx.fillRect(W/2-120,294,240,2);
   drawBtn("📚  VOIR LE LIVRE SUR AMAZON",300,false,"#22aa55");
   drawBtn("🏠  RETOUR AU MENU",348,false,"#ff6b9d");
-  ctx.fillStyle="#aaa";ctx.font="11px monospace";ctx.fillText("ou ESPACE pour retourner au menu",W/2,402);
+  ctx.fillStyle="#aaa";ctx.font="11px monospace";ctx.fillText("Tap ✅OK • ESPACE pour retourner au menu",W/2,402);
   ctx.textAlign="left";
 }
 
-// ── PAGE TRANSITION NIVEAU ──
-function drawLevelTransition(){
+// ── PAGE CHARGEMENT NIVEAU (avec barre de progression animée) ──
+function startLoading(){
+  state="loading";
+  loadingProgress=0;
+  loadingTimer=0;
+}
+function finishLoading(){
+  currentLevel++;
+  resetLevel();
+  state="playing";
+}
+
+function drawLoading(){
+  // Fond animé style pixel art
   ctx.fillStyle="#0a0a1a";ctx.fillRect(0,0,W,H);
-  for(let i=0;i<20;i++){ctx.fillStyle=`hsl(${i*18},80%,60%)`;ctx.globalAlpha=.2;ctx.beginPath();ctx.arc((Math.sin(i*555+t*.5)*.5+.5)*W,(Math.cos(i*222+t*.4)*.5+.5)*H,4,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;
+  // Étoiles/particules de fond
+  for(let i=0;i<30;i++){
+    const blink=Math.sin(t*3+i*1.7)*.5+.5;
+    ctx.fillStyle=`rgba(${180+i*2},${200+i},255,${blink*.4})`;
+    ctx.beginPath();ctx.arc((i*137+t*10)%W,((i*97+t*5)%H),1.5,0,Math.PI*2);ctx.fill();
+  }
+
+  // Titre
   ctx.textAlign="center";
-  ctx.fillStyle="#fff200";ctx.font="bold 22px monospace";ctx.fillText("🎉 NIVEAU TERMINÉ ! 🎉",W/2,120);
-  ctx.fillStyle="#aaffaa";ctx.font="15px monospace";ctx.fillText("Moka a tout saccagé !",W/2,155);
-  ctx.fillStyle="#fff";ctx.font="bold 18px monospace";ctx.fillText("PROCHAIN NIVEAU...",W/2,195);
-  ctx.fillStyle="#fff200";ctx.font="16px monospace";
-  if(currentLevel<3)ctx.fillText(LEVEL_DEFS[currentLevel].name,W/2,225);
-  ctx.fillStyle="#888";ctx.font="12px monospace";ctx.fillText("ESPACE ou clic pour continuer",W/2,270);
+  ctx.fillStyle="#fff200";ctx.font="bold 22px monospace";
+  ctx.fillText("🎉 NIVEAU TERMINÉ ! 🎉",W/2,90);
+  ctx.fillStyle="#aaffaa";ctx.font="15px monospace";
+  ctx.fillText("Moka a tout saccagé !",W/2,120);
+
+  // Nom du niveau suivant
+  ctx.fillStyle="#fff";ctx.font="bold 16px monospace";
+  ctx.fillText("CHARGEMENT DU NIVEAU SUIVANT...",W/2,155);
+  if(currentLevel<3){
+    ctx.fillStyle="#ff88cc";ctx.font="bold 18px monospace";
+    ctx.fillText(LEVEL_DEFS[currentLevel].name,W/2,185);
+  }
+
+  // Petites images de Moka animées qui courent
+  const mokaImg=imgs["moka_droite"];
+  if(mokaImg&&mokaImg.complete&&mokaImg.naturalWidth>0){
+    const mokaX=(t*80)%(W+60)-30;
+    ctx.drawImage(mokaImg,mokaX,210,35,35);
+  }
+
+  // Barre de progression style pixel art
+  const barX=W/2-180,barY=260,barW=360,barH=24;
+  // Fond barre
+  ctx.fillStyle="#1a1a3a";ctx.fillRect(barX-2,barY-2,barW+4,barH+4);
+  ctx.strokeStyle="#555";ctx.lineWidth=2;ctx.strokeRect(barX-2,barY-2,barW+4,barH+4);
+  // Fond intérieur
+  ctx.fillStyle="#111";ctx.fillRect(barX,barY,barW,barH);
+  // Segments style pixel
+  const filled=Math.floor(loadingProgress*20);
+  for(let i=0;i<20;i++){
+    const segW=(barW-22)/20;const segX=barX+1+i*(segW+1);
+    if(i<filled){
+      const hue=120+(i/20)*60; // vert → jaune
+      ctx.fillStyle=`hsl(${hue},90%,${50+Math.sin(t*5+i)*.8}%)`;
+      ctx.fillRect(segX,barY+2,segW,barH-4);
+    } else {
+      ctx.fillStyle="#1a1a1a";ctx.fillRect(segX,barY+2,segW,barH-4);
+    }
+  }
+  // Pourcentage
+  ctx.fillStyle="#fff";ctx.font="bold 12px monospace";
+  ctx.fillText(Math.floor(loadingProgress*100)+"%",W/2,barY+barH/2+4);
+
+  // Message selon progression
+  const msgs=["Moka prend son élan...","Préparation des dégâts...","Chargement des niaiseries...","PRÊT À TOUT CASSER !"];
+  const msgIdx=Math.min(msgs.length-1,Math.floor(loadingProgress*msgs.length));
+  ctx.fillStyle="#ffcc44";ctx.font="13px monospace";ctx.fillText(msgs[msgIdx],W/2,310);
+
+  // Score actuel
+  ctx.fillStyle="#88aaff";ctx.font="12px monospace";
+  ctx.fillText("Score actuel: "+String(score).padStart(6,"0"),W/2,340);
+
+  // ── BD MOKA — discrète mais présente ──
+  const coverImg=imgs["cover"];
+  const cvSize=64; // carré comme l'original
+  const cvX=W/2-cvSize/2,cvY=355;
+  if(coverImg&&coverImg.complete&&coverImg.naturalWidth>0){
+    // Légère ombre
+    ctx.save();ctx.globalAlpha=.25;ctx.fillStyle="#000";ctx.fillRect(cvX+4,cvY+4,cvSize,cvSize);ctx.restore();
+    // Cover carrée
+    ctx.drawImage(coverImg,cvX,cvY,cvSize,cvSize);
+    // Bordure dorée fine
+    ctx.strokeStyle="#fff200";ctx.lineWidth=2;ctx.strokeRect(cvX,cvY,cvSize,cvSize);
+  } else {
+    ctx.fillStyle="#335522";ctx.fillRect(cvX,cvY,cvSize,cvSize);
+    ctx.fillStyle="#aaffaa";ctx.font="10px monospace";ctx.fillText("MOKA BD",W/2,cvY+cvSize/2+4);
+  }
+  // Petit texte discret sous la cover
+  ctx.fillStyle="rgba(255,255,200,.7)";ctx.font="10px monospace";
+  ctx.fillText("📚 Moka a aussi une BD! amazon.ca/dp/2982442809",W/2,cvY+cvSize+14);
+
+  if(loadingProgress>=1){
+    // Clignote "Continuer" — positionné sous la BD
+    if(Math.floor(t*3)%2===0){
+      ctx.fillStyle="#fff200";ctx.font="bold 15px monospace";
+      ctx.fillText("▶ Tap ✅OK ou ESPACE pour continuer",W/2,450);
+    }
+  }
   ctx.textAlign="left";
 }
 
@@ -688,63 +1006,68 @@ function resetLevel(){
   const lvl=LEVEL_DEFS[currentLevel-1];
   t=0;niaiseries=0;
   mk={x:lvl.mokaStart.x,y:lvl.mokaStart.y,dir:"bas",frame:0,ft:0};
-  felix={x:lvl.felixStart.x,y:lvl.felixStart.y,dir:"bas",frame:0,ft:0,wp:0,chasing:false,alert:0};
+  felix={x:lvl.felixStart.x,y:lvl.felixStart.y,dir:"bas",frame:0,ft:0,wp:0,chasing:false,alert:0,rage:0,rageChaseDur:0};
   lili={x:lvl.liliStart.x,y:lvl.liliStart.y,dir:"bas",frame:0,ft:0,target:null,chasing:false,hairAnim:0};
-  ch={x:lvl.choupiStart.x,y:lvl.choupiStart.y,dir:"bas",fleeing:false,vx:0,vy:0,fleeTimer:0};
+  ch={x:lvl.choupiStart.x,y:lvl.choupiStart.y,dir:"bas",fleeing:false,vx:0,vy:0,fleeTimer:0,fearAnim:0,targetCorner:null};
   bn={active:false,x:0,y:0,timer:0,spawnIn:15+Math.random()*20};
   liliHitCooldown=0;felixHitCooldown=0;
   initObjs();
 }
-
-// ── FULL RESET ──
-function fullReset(){
-  score=0;lives=2;currentLevel=1;
-  resetLevel();
-}
+function fullReset(){score=0;lives=2;currentLevel=1;resetLevel();}
 
 // ── BOUCLE PRINCIPALE ──
-let transitionTimer=0;
 function loop(ts){
   const dt=Math.min((ts-(lastT||ts))/1000,.05);lastT=ts;t+=dt;
   ctx.clearRect(0,0,W,H);
+
+  // Poll manette chaque frame
+  pollGamepad();
 
   if(state==="menu"){drawMenu();requestAnimationFrame(loop);return;}
   if(state==="options"){drawOptions();requestAnimationFrame(loop);return;}
   if(state==="highscores"){drawHighScores();requestAnimationFrame(loop);return;}
   if(state==="loselife"){drawLoseLife();requestAnimationFrame(loop);return;}
-  if(state==="leveldone"){
-    transitionTimer-=dt;
-    drawRoom();for(const r of rubble)drawRubble(r);for(const o of objs)drawObj(o);
-    drawLevelTransition();
-    if(transitionTimer<=0||(keys[" "]||keys["Enter"])){
-      keys[" "]=false;keys["Enter"]=false;
-      currentLevel++;resetLevel();state="playing";
-    }
+
+  // ── CHARGEMENT NIVEAU ──
+  if(state==="loading"){
+    loadingTimer+=dt;
+    loadingProgress=Math.min(1,loadingTimer/loadingDuration);
+    drawLoading();
+    // Auto-continuer après durée complète + petit délai
+    if(loadingTimer>=loadingDuration+0.5)finishLoading();
     requestAnimationFrame(loop);return;
   }
 
   if(state==="playing"){
-    // Cooldowns
     if(liliHitCooldown>0)liliHitCooldown-=dt;
     if(felixHitCooldown>0)felixHitCooldown-=dt;
 
     let dx=0,dy=0;
-    if(keys["ArrowLeft"]||keys["a"]||keys["A"])dx=-1;if(keys["ArrowRight"]||keys["d"]||keys["D"])dx=1;
-    if(keys["ArrowUp"]||keys["w"]||keys["W"])dy=-1;if(keys["ArrowDown"]||keys["s"]||keys["S"])dy=1;
-    if(dx||dy){const l=Math.hypot(dx,dy);mk.x=Math.max(.3,Math.min(COLS-1.3,mk.x+dx/l*4.5*dt));mk.y=Math.max(.3,Math.min(ROWS-.8,mk.y+dy/l*4.5*dt));if(Math.abs(dx)>=Math.abs(dy))mk.dir=dx>0?"droite":"gauche";else mk.dir=dy>0?"bas":"haut";mk.ft+=dt;if(mk.ft>.15){mk.frame++;mk.ft=0;}}
+    if(keys["ArrowLeft"]||keys["a"]||keys["A"])dx=-1;
+    if(keys["ArrowRight"]||keys["d"]||keys["D"])dx=1;
+    if(keys["ArrowUp"]||keys["w"]||keys["W"])dy=-1;
+    if(keys["ArrowDown"]||keys["s"]||keys["S"])dy=1;
+    if(dx||dy){
+      const l=Math.hypot(dx,dy);
+      mk.x=Math.max(.3,Math.min(COLS-1.3,mk.x+dx/l*4.5*dt));
+      mk.y=Math.max(.3,Math.min(ROWS-.8,mk.y+dy/l*4.5*dt));
+      if(Math.abs(dx)>=Math.abs(dy))mk.dir=dx>0?"droite":"gauche";else mk.dir=dy>0?"bas":"haut";
+      mk.ft+=dt;if(mk.ft>.15){mk.frame++;mk.ft=0;}
+    }
     const spNow=keys[" "];
     if(spNow&&!spWas){const o=nearObj();if(o)hitObj(o);else for(let i=0;i<6;i++)parts.push({x:mk.x*TILE,y:mk.y*TILE,vx:(Math.random()-.5)*4,vy:-2-Math.random()*3,life:1,dec:.06,sz:5,col:"#ff88ff"});}
     spWas=spNow;
+
     updateFelix(dt);updateLili(dt);updateChoupi(dt);updateBanane(dt);
     for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.x+=p.vx*60*dt;p.y+=p.vy*60*dt;p.vy+=5*dt;p.life-=p.dec;if(p.life<=0)parts.splice(i,1);}
 
     drawRoom();
-    for(const r of rubble)drawRubble(r);for(const o of objs)drawObj(o);
+    for(const r of rubble)drawRubble(r);
+    for(const o of objs)drawObj(o);
     drawBanane();drawChoupi(ch.x,ch.y,ch.dir);
 
     // Cônes vision Félix
-    ctx.save();ctx.globalAlpha=.09;
-    ctx.fillStyle=felix.chasing?"#ff0000":"#44ffaa";
+    ctx.save();ctx.globalAlpha=.09;ctx.fillStyle=felix.chasing?"#ff0000":"#44ffaa";
     const ra=felix.dir==="droite"?0:felix.dir==="gauche"?Math.PI:felix.dir==="bas"?Math.PI/2:-Math.PI/2;
     ctx.beginPath();ctx.moveTo(felix.x*TILE+TILE/2,felix.y*TILE+TILE/2);ctx.arc(felix.x*TILE+TILE/2,felix.y*TILE+TILE/2,(felix.chasing?5:3)*TILE,ra-.55,ra+.55);ctx.closePath();ctx.fill();ctx.restore();
     // Cônes vision Lili
@@ -759,26 +1082,35 @@ function loop(ts){
     for(const p of parts){ctx.save();ctx.globalAlpha=p.life;ctx.fillStyle=p.col;ctx.fillRect(p.x-p.sz/2,p.y-p.sz/2,p.sz,p.sz);ctx.restore();}
 
     // Alertes
-    if(felix.chasing){ctx.fillStyle="rgba(255,0,0,"+Math.sin(t*8)*.04+")";ctx.fillRect(0,0,W,H);ctx.fillStyle="rgba(255,80,0,"+Math.min(1,felix.alert)+")";ctx.font="bold 12px monospace";ctx.textAlign="center";ctx.fillText("⚠ MOKA LAHAIE ! ⚠",W/2,20);ctx.textAlign="left";}
+    if(felix.chasing){
+      ctx.fillStyle="rgba(255,0,0,"+Math.sin(t*8)*.04+")";ctx.fillRect(0,0,W,H);
+      const rageMsg=felix.rage>=3?"😡 FÉLIX EST FURIEUX ! 😡":felix.rage===2?"😠 FÉLIX POURSUIT ! 😠":"⚠ MOKA LAHAIE ! ⚠";
+      ctx.fillStyle="rgba(255,80,0,"+Math.min(1,felix.alert)+")";ctx.font="bold 12px monospace";ctx.textAlign="center";ctx.fillText(rageMsg,W/2,20);ctx.textAlign="left";
+    }
     if(lili.chasing){ctx.fillStyle="rgba(255,0,150,"+Math.sin(t*6)*.03+")";ctx.fillRect(0,0,W,H);ctx.font="bold 11px monospace";ctx.fillStyle="rgba(255,0,180,.8)";ctx.textAlign="center";ctx.fillText("🧹 LILI APPROCHE ! 🧹",W/2,felix.chasing?35:20);ctx.textAlign="left";}
 
     const no=nearObj();if(no){const cx2=(no.x+no.w/2)*TILE;ctx.fillStyle="#fff200";ctx.font="bold 11px monospace";ctx.textAlign="center";ctx.fillText("[ESPACE] ×"+no.hp,cx2,no.y*TILE-12);ctx.textAlign="left";}
     if(lili.target&&!lili.chasing){ctx.fillStyle="#ffaacc";ctx.font="10px monospace";ctx.textAlign="center";ctx.fillText("🧹 MÉNAGE EN COURS",W/2,H-5);ctx.textAlign="left";}
 
+    // Indicateur de rage Félix (HUD)
+    if(felix.rage>0){
+      ctx.fillStyle="rgba(0,0,0,.6)";ctx.fillRect(W-120,5,115,22);
+      ctx.fillStyle=felix.rage>=3?"#ff4444":felix.rage===2?"#ff8800":"#ffaa44";
+      ctx.font="11px monospace";ctx.textAlign="right";
+      const rageLabels=["","😤 IRRITÉ","😠 EN COLÈRE","😡 FURIE MAX"];
+      ctx.fillText(rageLabels[felix.rage]||"",W-8,20);ctx.textAlign="left";
+    }
+
     updateHUD();
 
     // ── COLLISIONS ──
-    // Félix attrape Moka
     if(felixHitCooldown<=0&&Math.hypot(mk.x-felix.x,mk.y-felix.y)<.85){
-      snd("loselife");hiScore=Math.max(hiScore,score);
-      lives--;
+      snd("loselife");hiScore=Math.max(hiScore,score);lives--;
       if(lives<=0){saveHS("MOKA",score);state="dead";stopMusic();}
       else{state="loselife";}
     }
-    // Lili attrape Moka
     if(liliHitCooldown<=0&&Math.hypot(mk.x-lili.x,mk.y-lili.y)<.85){
-      snd("loselife");hiScore=Math.max(hiScore,score);
-      lives--;
+      snd("loselife");hiScore=Math.max(hiScore,score);lives--;
       if(lives<=0){saveHS("MOKA",score);state="dead";stopMusic();}
       else{state="loselife";}
     }
@@ -786,11 +1118,8 @@ function loop(ts){
     if(objs.every(o=>!o.ok)){
       snd("win");hiScore=Math.max(hiScore,score);
       if(currentLevel<3){
-        // Niveau suivant
-        transitionTimer=2.5;
-        state="leveldone";
+        startLoading(); // ← écran de chargement animé
       } else {
-        // Fin du jeu — victoire !
         saveHS("MOKA",score);state="win";stopMusic();
       }
     }
