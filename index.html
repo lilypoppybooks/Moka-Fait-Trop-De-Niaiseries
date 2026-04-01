@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Moka Fait Trop De Niaiseries</title>
+<link rel="icon" type="image/png" href="images/item/banane.png">
+<title>Moka Lahaie</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;image-rendering:pixelated;}
 body{background:#ffb3c6;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:monospace;touch-action:none;overflow:hidden;}
@@ -81,6 +82,7 @@ for(const[k,s]of Object.entries(IP)){const i=new Image();i.src=s;imgs[k]=i;}
 
 // ── AUDIO ──
 let AC=null,bgSrc=null,bgGain=null,musicMuted=false,soundMuted=false;
+let currentMusicLevel = 1;  // Pour savoir quelle musique joue
 function getAC(){if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();return AC;}
 function snd(type){
   if(soundMuted)return;
@@ -96,13 +98,52 @@ function snd(type){
   }catch(e){}}
 async function startMusic(){
   if(musicMuted||bgSrc)return;
-  try{const ac=getAC(),r=await fetch("musique/musique.mp3");if(!r.ok)return;
+  // Choisir la musique selon le niveau (1, 2 ou 3)
+  let musicFile = "musique1.mp3";
+  if(currentLevel === 2) musicFile = "musique2.mp3";
+  if(currentLevel === 3) musicFile = "musique3.mp3";
+  
+  try{
+    const ac=getAC();
+    const r=await fetch("musique/" + musicFile);
+    if(!r.ok){
+      console.log("Musique non trouvée:", musicFile);
+      return;
+    }
     const buf=await ac.decodeAudioData(await r.arrayBuffer());
-    bgSrc=ac.createBufferSource();bgSrc.buffer=buf;bgSrc.loop=true;
-    bgGain=ac.createGain();bgGain.gain.value=.4;
-    bgSrc.connect(bgGain);bgGain.connect(ac.destination);bgSrc.start();
-  }catch(e){}}
-function stopMusic(){if(bgSrc){try{bgSrc.stop();}catch(e){}bgSrc=null;bgGain=null;}}
+    bgSrc=ac.createBufferSource();
+    bgSrc.buffer=buf;
+    bgSrc.loop=true;
+    bgGain=ac.createGain();
+    bgGain.gain.value=.4;
+    bgSrc.connect(bgGain);
+    bgGain.connect(ac.destination);
+    bgSrc.start();
+    currentMusicLevel = currentLevel;  // On note quelle musique joue
+  }catch(e){
+    console.log("Erreur musique:", e);
+  }
+}
+
+
+function stopMusic(){
+  if(bgSrc){
+    try{bgSrc.stop();}catch(e){}
+    bgSrc=null;
+    bgGain=null;
+  }
+}
+// Cette nouvelle fonction change la musique quand on change de niveau
+function changeLevelMusic(){
+  if(musicMuted) return;
+  // Si on est déjà en train de jouer une musique pour ce niveau, on ne fait rien
+  if(currentMusicLevel === currentLevel) return;
+  // Sinon, on arrête et on relance la bonne musique
+  stopMusic();
+  startMusic();
+}
+
+
 function toggleMusic(){musicMuted=!musicMuted;if(bgGain)bgGain.gain.value=musicMuted?0:.4;if(!musicMuted&&!bgSrc)startMusic();}
 
 // ── DIFFICULTÉ ──
@@ -529,7 +570,7 @@ function updateLili(dt){
       }
     } else {lili.target=null;tx=7;ty=5;}
   }
-  const spd=lili.chasing?cfg.liliSpeed*2:cfg.liliSpeed*0.9;
+  const spd=lili.chasing?cfg.liliSpeed*2:cfg.liliSpeed*2.5;
   const rdx=tx-lili.x,rdy=ty-lili.y,rd=Math.hypot(rdx,rdy);
   if(rd>.15){lili.x+=rdx/rd*spd*dt;lili.y+=rdy/rd*spd*dt;if(Math.abs(rdx)>Math.abs(rdy))lili.dir=rdx>0?"droite":"gauche";else lili.dir=rdy>0?"bas":"haut";}
   lili.ft+=dt;if(lili.ft>.22){lili.frame++;lili.ft=0;}
@@ -790,7 +831,7 @@ function drawBanane(){
   if(bn.timer<4&&Math.floor(bn.timer*4)%2===0)return;
   const px=(bn.x-.5)*TILE,py=(bn.y-.5)*TILE;
   const img=imgs["banane"];
-  if(img&&img.complete&&img.naturalWidth>0){ctx.drawImage(img,px,py,TILE,TILE);}
+  if(img&&img.complete&&img.naturalWidth>0){ctx.drawImage(img,px+4,py+4,TILE-8,TILE-8);}
   else{ctx.save();ctx.fillStyle="#ffe066";ctx.beginPath();ctx.ellipse(px+TILE/2,py+TILE/2,12,7,-.6,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#c8a000";ctx.lineWidth=2;ctx.stroke();ctx.restore();}
   ctx.fillStyle="#fff200";ctx.font="bold 10px monospace";ctx.textAlign="center";ctx.fillText("+100",px+TILE/2,py-3);ctx.textAlign="left";
 }
@@ -832,6 +873,10 @@ function drawOptions(){
   ctx.fillText("🎮  DIFFICULTÉ",W/2-140,260);
   drawBtn(difficulty==="facile"?"FACILE  😊":"DIFFICILE  😤",230,false,difficulty==="facile"?"#44aaff":"#ff6622");
   ctx.font="12px monospace";ctx.fillStyle="#888";ctx.textAlign="center";ctx.fillText("Cliquez/tapez pour basculer",W/2,290);
+  // Crédits musique
+  ctx.font="9px monospace";ctx.fillStyle="#000000";
+  ctx.fillText("🎵 Musique: moodmode (Pixabay) | BouncyRunner (Pixabay) | Suno",W/2,315);
+  ctx.fillText("🎮 Créations Éliane Demers | Auteur Félix Lahaie",W/2,330);
   drawBtn("← RETOUR MENU",355,false,"#888");ctx.textAlign="left";
 }
 
@@ -875,7 +920,7 @@ function drawEnd(won){
   ctx.fillStyle="#aaa";ctx.font="11px monospace";ctx.fillText("Niaiseries: "+niaiseries+"  Hi-Score: "+String(hiScore).padStart(6,"0"),W/2,104);
   ctx.fillStyle="#ff6b9d";ctx.fillRect(W/2-120,114,240,2);
   ctx.fillStyle="#fff";ctx.font="bold 12px monospace";ctx.fillText("📚 Moka est aussi dans une BD !",W/2,132);
-  const ci=imgs["cover"],cw=90,ch2=112,cx2=W/2-45,cy2=140;
+  const ci=imgs["cover"],cw=112,ch2=112,cx2=W/2-45,cy2=140;
   if(ci&&ci.complete&&ci.naturalWidth>0){ctx.drawImage(ci,cx2,cy2,cw,ch2);ctx.strokeStyle="#fff200";ctx.lineWidth=3;ctx.strokeRect(cx2,cy2,cw,ch2);}
   else{ctx.fillStyle="#335522";ctx.fillRect(cx2,cy2,cw,ch2);ctx.fillStyle="#fff";ctx.font="12px monospace";ctx.fillText("MOKA BD",W/2,cy2+ch2/2);}
   ctx.fillStyle="#44ffaa";ctx.font="bold 12px monospace";ctx.fillText("👆 Cliquez la cover pour commander !",W/2,268);
@@ -892,11 +937,15 @@ function startLoading(){
   state="loading";
   loadingProgress=0;
   loadingTimer=0;
+  // On arrête la musique du niveau actuel
+  stopMusic();
 }
 function finishLoading(){
   currentLevel++;
   resetLevel();
   state="playing";
+  // On lance la musique du nouveau niveau
+  changeLevelMusic();
 }
 
 function drawLoading(){
@@ -1084,7 +1133,7 @@ function loop(ts){
     // Alertes
     if(felix.chasing){
       ctx.fillStyle="rgba(255,0,0,"+Math.sin(t*8)*.04+")";ctx.fillRect(0,0,W,H);
-      const rageMsg=felix.rage>=3?"😡 FÉLIX EST FURIEUX ! 😡":felix.rage===2?"😠 FÉLIX POURSUIT ! 😠":"⚠ MOKA LAHAIE ! ⚠";
+      const rageMsg=felix.rage>=3?"😡 MOKA LAHAIE! 😡":felix.rage===2?"😠 FÉLIX POURSUIT ! 😠":"⚠ MOKA LAHAIE ! ⚠";
       ctx.fillStyle="rgba(255,80,0,"+Math.min(1,felix.alert)+")";ctx.font="bold 12px monospace";ctx.textAlign="center";ctx.fillText(rageMsg,W/2,20);ctx.textAlign="left";
     }
     if(lili.chasing){ctx.fillStyle="rgba(255,0,150,"+Math.sin(t*6)*.03+")";ctx.fillRect(0,0,W,H);ctx.font="bold 11px monospace";ctx.fillStyle="rgba(255,0,180,.8)";ctx.textAlign="center";ctx.fillText("🧹 LILI APPROCHE ! 🧹",W/2,felix.chasing?35:20);ctx.textAlign="left";}
