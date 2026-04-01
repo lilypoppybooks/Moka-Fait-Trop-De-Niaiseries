@@ -228,14 +228,47 @@ canvas.addEventListener("touchend",e=>{e.preventDefault();["ArrowLeft","ArrowRig
   const dirs={"btn-up":"ArrowUp","btn-down":"ArrowDown","btn-left":"ArrowLeft","btn-right":"ArrowRight"};
   for(const[id,k]of Object.entries(dirs)){
     const b=document.getElementById(id);
-    b.addEventListener("touchstart",e=>{e.preventDefault();keys[k]=true;},{passive:false});
-    b.addEventListener("touchend",e=>{e.preventDefault();keys[k]=false;},{passive:false});
-    b.addEventListener("mousedown",()=>keys[k]=true);b.addEventListener("mouseup",()=>keys[k]=false);
+    if(!b) continue;
+    // Empêche la propagation pour ne pas déclencher les événements du canvas
+    const startHandler = (e) => {
+      e.preventDefault();
+      e.stopPropagation(); // CRUCIAL : empêche le canvas de capter l'événement
+      keys[k] = true;
+    };
+    const endHandler = (e) => {
+      e.preventDefault();
+      e.stopPropagation(); // CRUCIAL
+      keys[k] = false;
+    };
+    b.addEventListener("touchstart", startHandler, {passive: false});
+    b.addEventListener("touchend", endHandler, {passive: false});
+    b.addEventListener("mousedown", startHandler);
+    b.addEventListener("mouseup", endHandler);
   }
-  const a=document.getElementById("btn-action");
-  a.addEventListener("touchstart",e=>{e.preventDefault();keys[" "]=true;},{passive:false});
-  a.addEventListener("touchend",e=>{e.preventDefault();keys[" "]=false;},{passive:false});
-  a.addEventListener("mousedown",()=>keys[" "]=true);a.addEventListener("mouseup",()=>keys[" "]=false);
+  
+  const a = document.getElementById("btn-action");
+  if(a){
+    const actionStart = (e) => {
+      e.preventDefault();
+      e.stopPropagation(); // Empêche le canvas de recevoir l'événement
+      keys[" "] = true;
+      // Simulation d'une frappe ESPACE pour l'action immédiate (optionnel mais plus réactif)
+      const o = nearObj();
+      if(o) hitObj(o);
+      else {
+        for(let i=0;i<6;i++) parts.push({x:mk.x*TILE,y:mk.y*TILE,vx:(Math.random()-.5)*4,vy:-2-Math.random()*3,life:1,dec:.06,sz:5,col:"#ff88ff"});
+      }
+    };
+    const actionEnd = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      keys[" "] = false;
+    };
+    a.addEventListener("touchstart", actionStart, {passive: false});
+    a.addEventListener("touchend", actionEnd, {passive: false});
+    a.addEventListener("mousedown", actionStart);
+    a.addEventListener("mouseup", actionEnd);
+  }
 })();
 
 // ── LOGIQUE OBJETS ──
