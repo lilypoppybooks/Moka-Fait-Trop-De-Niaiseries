@@ -83,7 +83,27 @@ for(const[k,s]of Object.entries(IP)){const i=new Image();i.src=s;imgs[k]=i;}
 // ── AUDIO ──
 let AC=null,bgSrc=null,bgGain=null,musicMuted=false,soundMuted=false;
 let currentMusicLevel = 1;  // Pour savoir quelle musique joue
-function getAC(){if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();return AC;}
+function getAC(){
+  if(!AC){AC=new(window.AudioContext||window.webkitAudioContext)();}
+  // iOS/iPad: débloquer le contexte audio si suspendu
+  if(AC.state==="suspended"){AC.resume().catch(()=>{});}
+  return AC;
+}
+// iOS/iPad: débloquer l'audio sur la première interaction utilisateur
+function unlockAudio(){
+  const ac=getAC();
+  if(ac.state==="suspended"){
+    ac.resume().then(()=>{
+      // Jouer un son silencieux pour débloquer complètement
+      const buf=ac.createBuffer(1,1,22050);
+      const src=ac.createBufferSource();
+      src.buffer=buf;src.connect(ac.destination);src.start(0);
+    }).catch(()=>{});
+  }
+}
+document.addEventListener("touchstart",unlockAudio,{once:true,passive:true});
+document.addEventListener("touchend",unlockAudio,{once:true,passive:true});
+document.addEventListener("click",unlockAudio,{once:true});
 function snd(type){
   if(soundMuted)return;
   try{const ac=getAC(),o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);
@@ -96,21 +116,30 @@ function snd(type){
     else if(type==="loselife"){o.type="sawtooth";o.frequency.setValueAtTime(400,ac.currentTime);o.frequency.exponentialRampToValueAtTime(80,ac.currentTime+.5);g.gain.setValueAtTime(.25,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.5);o.start();o.stop(ac.currentTime+.5);}
     else if(type==="angry"){o.type="square";o.frequency.setValueAtTime(200,ac.currentTime);o.frequency.exponentialRampToValueAtTime(100,ac.currentTime+.3);g.gain.setValueAtTime(.2,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.35);o.start();o.stop(ac.currentTime+.35);}
   }catch(e){}}
-async function startMusic(){
+async function startMusic(forceFile){
   if(musicMuted||bgSrc)return;
-  // Choisir la musique selon le niveau (1, 2 ou 3)
-  let musicFile = "musique1.mp3";
-  if(currentLevel === 2) musicFile = "musique2.mp3";
-  if(currentLevel === 3) musicFile = "musique3.mp3";
+  // Choisir la musique selon le niveau (1, 2 ou 3) ou aléatoire si fourni
+  let musicFile = forceFile || "musique1.mp3";
+  if(!forceFile){
+    if(currentLevel === 2) musicFile = "musique2.mp3";
+    else if(currentLevel >= 3) musicFile = "musique3.mp3";
+  }
   
   try{
     const ac=getAC();
+    // iOS: s'assurer que le contexte est actif
+    if(ac.state==="suspended"){await ac.resume();}
     const r=await fetch("musique/" + musicFile);
     if(!r.ok){
       console.log("Musique non trouvée:", musicFile);
       return;
     }
-    const buf=await ac.decodeAudioData(await r.arrayBuffer());
+    const arrayBuf=await r.arrayBuffer();
+    // iOS nécessite un callback pour decodeAudioData (pas toujours de Promise)
+    const buf=await new Promise((resolve,reject)=>{
+      const p=ac.decodeAudioData(arrayBuf,resolve,reject);
+      if(p&&p.then)p.then(resolve).catch(reject);
+    });
     bgSrc=ac.createBufferSource();
     bgSrc.buffer=buf;
     bgSrc.loop=true;
@@ -148,6 +177,7 @@ function toggleMusic(){musicMuted=!musicMuted;if(bgGain)bgGain.gain.value=musicM
 
 // ── DIFFICULTÉ ──
 let difficulty="facile";
+let pendingDifficulty="facile"; // Stocke la sélection en cours dans options
 function getDiffConfig(){
   if(difficulty==="difficile")return{felixChaseRange:4.5,felixChaseKeep:true,liliChaseRange:4.0,liliChaseKeep:true,felixSpeed:1.1,liliSpeed:0.95};
   return{felixChaseRange:3.0,felixChaseKeep:false,liliChaseRange:2.5,liliChaseKeep:false,felixSpeed:0.85,liliSpeed:0.7};
@@ -158,6 +188,11 @@ let state="menu",score=0,hiScore=0,t=0,lastT=0,niaiseries=0,menuSel=0;
 let lives=2,currentLevel=1;
 let mk={x:4,y:5,dir:"bas",frame:0,ft:0};
 const WPS=[[11,2],[2,2],[2,8],[11,8],[6,5]];
+
+// ── NIVEAU INFINI (après niveau 3) ──
+let infiniteLevel=0;   // compteur de vagues infinies (0 = pas encore infini)
+let diffTimer=0;       // timer mode difficile (60s après niveau 3)
+let diffTimerActive=false;
 
 // ── FÉLIX — stade de colère (s'accumule par niveau) ──
 // felixRage: 0=ménage normal, 1=repair+bref poursuite, 2=poursuite+retour, 3=poursuite permanente
@@ -219,12 +254,65 @@ const LEVEL_DEFS=[
 
 // ── OBJETS ──
 function initObjs(){
-  const lvl=LEVEL_DEFS[currentLevel-1];
-  objs=lvl.objs.map(o=>({...o,ok:true,hp:o.maxHp}));
+  if(currentLevel<=3){
+    const lvl=LEVEL_DEFS[currentLevel-1];
+    // Cloner profondément pour que les HP/ok reviennent à la valeur initiale
+    objs=lvl.objs.map(o=>({...o,ok:true,hp:o.maxHp}));
+  } else {
+    // Niveau infini: générer des objets aléatoirement
+    objs=generateInfiniteObjs();
+  }
   rubble=[];parts=[];
 }
 
-// ── HIGH SCORES ──
+// ── NIVEAU INFINI — Générateur d'objets aléatoires ──
+const OBJ_TYPES=[
+  {t:"sofa",  w:3,h:2,pts:150,hp:3},
+  {t:"tv",    w:2,h:2,pts:200,hp:4},
+  {t:"box",   w:1,h:1,pts:80, hp:1},
+  {t:"lamp",  w:1,h:2,pts:100,hp:2},
+  {t:"table", w:2,h:1,pts:120,hp:2},
+  {t:"plant", w:1,h:2,pts:60, hp:1},
+  {t:"cushion",w:1,h:1,pts:50,hp:1},
+];
+const INF_STYLES=["salon","cuisine","chambre","jardin","grenier"];
+let infiniteRoomStyle="salon";
+
+function generateInfiniteObjs(){
+  const list=[];
+  let id=0;
+  const placed=[];
+  // 10 objets comme les niveaux normaux, placés aléatoirement sans chevauchement
+  for(let attempt=0;attempt<200&&list.length<10;attempt++){
+    const tpl=OBJ_TYPES[Math.floor(Math.random()*OBJ_TYPES.length)];
+    const x=1+Math.floor(Math.random()*(COLS-tpl.w-2));
+    const y=1+Math.floor(Math.random()*(ROWS-tpl.h-2));
+    // Vérifier chevauchement
+    const clash=placed.some(p=>x<p.x+p.w&&x+tpl.w>p.x&&y<p.y+p.h&&y+tpl.h>p.y);
+    if(!clash){
+      placed.push({x,y,w:tpl.w,h:tpl.h});
+      list.push({id:id++,t:tpl.t,x,y,w:tpl.w,h:tpl.h,ok:true,pts:tpl.pts+infiniteLevel*10,hp:tpl.hp,maxHp:tpl.hp});
+    }
+  }
+  return list;
+}
+
+// Styles supplémentaires pour niveaux infinis
+function drawInfiniteRoom(style){
+  if(style==="jardin"){
+    ctx.fillStyle="#90ee90";ctx.fillRect(0,0,W,H);
+    for(let r=0;r<ROWS+1;r++)for(let c=0;c<COLS;c++){ctx.fillStyle=(r+c)%2===0?"#5aaa5a":"#4a9a4a";ctx.fillRect(c*TILE,r*TILE,TILE,TILE);ctx.strokeStyle="#3a8a3a";ctx.lineWidth=.5;ctx.strokeRect(c*TILE,r*TILE,TILE,TILE);}
+    ctx.fillStyle="#8aee8a";ctx.fillRect(0,0,W,2*TILE);ctx.fillStyle="#3a8a3a";ctx.fillRect(0,2*TILE-6,W,6);
+    for(let i=0;i<12;i++){ctx.fillStyle=`rgba(255,255,150,${.15+Math.sin(t*2+i)*.05})`;ctx.beginPath();ctx.arc((i*157)%W,((i*113)%H),3,0,Math.PI*2);ctx.fill();}
+  } else if(style==="grenier"){
+    ctx.fillStyle="#a08060";ctx.fillRect(0,0,W,H);
+    for(let r=0;r<ROWS+1;r++)for(let c=0;c<COLS;c++){ctx.fillStyle=(r+c)%2===0?"#7a6040":"#6a5030";ctx.fillRect(c*TILE,r*TILE,TILE,TILE);ctx.strokeStyle="#5a4020";ctx.lineWidth=.5;ctx.strokeRect(c*TILE,r*TILE,TILE,TILE);}
+    ctx.fillStyle="#9a8060";ctx.fillRect(0,0,W,2*TILE);ctx.fillStyle="#5a4020";ctx.fillRect(0,2*TILE-6,W,6);
+    for(let i=0;i<8;i++){ctx.fillStyle="rgba(200,180,100,.12)";ctx.fillRect((i*70)%W,0,15,H);}
+  }
+}
+
+
 async function loadHS(){
   try{const r=await fetch("scores/score.csv");if(!r.ok){highScores=[];return;}
     const txt=await r.text();
@@ -243,23 +331,31 @@ document.addEventListener("keyup",e=>{keys[e.key]=false;});
 
 function handleMenuKey(key){
   if(state==="menu"){
-    if(key==="ArrowUp")menuSel=(menuSel-1+4)%4;
-    if(key==="ArrowDown")menuSel=(menuSel+1)%4;
+    if(key==="ArrowUp"){menuSel=(menuSel-1+4)%4;snd("repair");}
+    if(key==="ArrowDown"){menuSel=(menuSel+1)%4;snd("repair");}
     if(key==="Enter"||key===" ")doMenuSel();
   }
-  if(state==="options"&&(key==="Escape"||key==="Backspace"))state="menu";
+  if(state==="options"){
+    if(key==="Escape"||key==="Backspace"){difficulty=pendingDifficulty;state="menu";}
+    if(key==="Enter"||key===" "){difficulty=pendingDifficulty;state="menu";}
+  }
   if(state==="highscores"&&(key==="Escape"||key===" "||key==="Enter"))state="menu";
   if(state==="loselife"&&(key===" "||key==="Enter")){continuePlaying();}
   if((state==="dead"||state==="win")&&(key===" "||key==="Enter")){fullReset();state="menu";}
   if(state==="loading"&&(key===" "||key==="Enter")&&loadingProgress>=1){finishLoading();}
 }
 
-function continuePlaying(){state="playing";liliHitCooldown=2;felixHitCooldown=2;}
+function continuePlaying(){
+  resetLevel(); // Remet les objets et positions au début du niveau courant
+  state="playing";
+  liliHitCooldown=2;felixHitCooldown=2;
+}
 
 function doMenuSel(){
   getAC(); // unlock audio context
+  snd("banane");
   if(menuSel===0){fullReset();state="playing";startMusic();}
-  else if(menuSel===1)state="options";
+  else if(menuSel===1){pendingDifficulty=difficulty;state="options";}
   else if(menuSel===2)state="highscores";
   else window.open(AMAZON,"_blank");
 }
@@ -291,18 +387,18 @@ function handleCanvasClick(cx,cy){
 
 function menuClick(cx,cy){
   const btns=[
-    {y:180,action:()=>{fullReset();state="playing";startMusic();}},
-    {y:230,action:()=>state="options"},
-    {y:280,action:()=>state="highscores"},
+    {y:180,action:()=>{getAC();snd("banane");fullReset();state="playing";startMusic();}},
+    {y:230,action:()=>{snd("repair");pendingDifficulty=difficulty;state="options";}},
+    {y:280,action:()=>{snd("repair");state="highscores";}},
     {y:330,action:()=>window.open(AMAZON,"_blank")},
   ];
   for(const b of btns){if(cy>=b.y&&cy<=b.y+40&&cx>=W/2-130&&cx<=W/2+130){b.action();return;}}
 }
 function optClick(cx,cy){
-  if(cy>=110&&cy<=150)toggleMusic();
-  if(cy>=170&&cy<=210){soundMuted=!soundMuted;}
-  if(cy>=230&&cy<=270){difficulty=difficulty==="facile"?"difficile":"facile";}
-  if(cy>=350&&cy<=390)state="menu";
+  if(cy>=110&&cy<=150){toggleMusic();snd("repair");}
+  if(cy>=170&&cy<=210){soundMuted=!soundMuted;snd("repair");}
+  if(cy>=230&&cy<=270){pendingDifficulty=pendingDifficulty==="facile"?"difficile":"facile";snd("smash");}
+  if(cy>=350&&cy<=390){difficulty=pendingDifficulty;snd("win");state="menu";}
 }
 function endClick(cx,cy){
   const ci=imgs["cover"],cw=90,ch2=90,cx2=W/2-45,cy2=140;
@@ -531,9 +627,9 @@ function updateFelix(dt){
   let tx,ty;
   if(felix.chasing){tx=mk.x;ty=mk.y;}
   else{
-    const lvl=LEVEL_DEFS[currentLevel-1];
-    const wp=lvl.felixWP[felix.wp];tx=wp[0];ty=wp[1];
-    if(Math.hypot(felix.x-tx,felix.y-ty)<.3)felix.wp=(felix.wp+1)%lvl.felixWP.length;
+    const felixWP=currentLevel<=3?LEVEL_DEFS[currentLevel-1].felixWP:[[11,2],[2,2],[2,8],[11,8],[6,5]];
+    const wp=felixWP[felix.wp%felixWP.length];tx=wp[0];ty=wp[1];
+    if(Math.hypot(felix.x-tx,felix.y-ty)<.3)felix.wp=(felix.wp+1)%felixWP.length;
   }
   const spd=cfg.felixSpeed+levelSpeedBonus+(t/90)*.3+(felix.chasing?(felix.rage>=3?1.8:1.3):0);
   const rdx=tx-felix.x,rdy=ty-felix.y,rd=Math.hypot(rdx,rdy);
@@ -646,7 +742,10 @@ function updateBanane(dt){
 }
 
 // ── SALLE DE JEU ──
-function getRoomStyle(){return LEVEL_DEFS[currentLevel-1].roomStyle;}
+function getRoomStyle(){
+  if(currentLevel<=3)return LEVEL_DEFS[currentLevel-1].roomStyle;
+  return infiniteRoomStyle;
+}
 function drawRoom(){
   const style=getRoomStyle();
   if(style==="salon"){
@@ -667,6 +766,8 @@ function drawRoom(){
     for(let r=0;r<ROWS+1;r++)for(let c=0;c<COLS;c++){ctx.fillStyle=(r+c)%2===0?"#9b8ec4":"#8a7db3";ctx.fillRect(c*TILE,r*TILE,TILE,TILE);ctx.strokeStyle="#6a5d93";ctx.lineWidth=.5;ctx.strokeRect(c*TILE,r*TILE,TILE,TILE);}
     ctx.fillStyle="#ddd0ff";ctx.fillRect(0,0,W,2*TILE);ctx.fillStyle="#a090cc";ctx.fillRect(0,2*TILE-6,W,6);
     for(let i=0;i<20;i++){ctx.fillStyle=`rgba(255,255,220,${.1+Math.sin(i*7)*0.05})`;ctx.beginPath();ctx.arc((i*137)%W,((i*97)%H),2,0,Math.PI*2);ctx.fill();}
+  } else if(style==="jardin"||style==="grenier"){
+    drawInfiniteRoom(style);
   }
 }
 
@@ -871,13 +972,15 @@ function drawOptions(){
   ctx.fillText("🔊  SONS",W/2-140,200);
   drawBtn(soundMuted?"OFF  ✕":"ON  ✓",170,false,soundMuted?"#cc4444":"#44aa44");
   ctx.fillText("🎮  DIFFICULTÉ",W/2-140,260);
-  drawBtn(difficulty==="facile"?"FACILE  😊":"DIFFICILE  😤",230,false,difficulty==="facile"?"#44aaff":"#ff6622");
-  ctx.font="12px monospace";ctx.fillStyle="#888";ctx.textAlign="center";ctx.fillText("Cliquez/tapez pour basculer",W/2,290);
+  drawBtn(pendingDifficulty==="facile"?"FACILE  😊":"DIFFICILE  😤",230,false,pendingDifficulty==="facile"?"#44aaff":"#ff6622");
+  ctx.font="11px monospace";ctx.fillStyle="#555";ctx.textAlign="center";
+  if(pendingDifficulty==="difficile"){ctx.fillText("Timer 60s après le niveau 3",W/2,285);}
+  else{ctx.fillText("Cliquez pour changer",W/2,285);}
   // Crédits musique
   ctx.font="9px monospace";ctx.fillStyle="#000000";
   ctx.fillText("🎵 Musique: moodmode (Pixabay) | BouncyRunner (Pixabay) | Suno",W/2,315);
   ctx.fillText("🎮 Créations Éliane Demers | Auteur Félix Lahaie",W/2,330);
-  drawBtn("← RETOUR MENU",355,false,"#888");ctx.textAlign="left";
+  drawBtn("💾  SAUVEGARDER ET QUITTER",350,false,"#22aa55");ctx.textAlign="left";
 }
 
 function drawHighScores(){
@@ -941,11 +1044,21 @@ function startLoading(){
   stopMusic();
 }
 function finishLoading(){
-  currentLevel++;
+  if(currentLevel<3){
+    currentLevel++;
+  }
+  // Pour niveau infini (>=4), currentLevel reste tel quel, on remet les objets
   resetLevel();
   state="playing";
-  // On lance la musique du nouveau niveau
-  changeLevelMusic();
+  // Musique: infini = aléatoire, sinon selon niveau
+  if(currentLevel>=4){
+    stopMusic();
+    const musiques=["musique1.mp3","musique2.mp3","musique3.mp3"];
+    const choix=musiques[Math.floor(Math.random()*musiques.length)];
+    startMusic(choix);
+  } else {
+    changeLevelMusic();
+  }
 }
 
 function drawLoading(){
@@ -971,6 +1084,9 @@ function drawLoading(){
   if(currentLevel<3){
     ctx.fillStyle="#ff88cc";ctx.font="bold 18px monospace";
     ctx.fillText(LEVEL_DEFS[currentLevel].name,W/2,185);
+  } else {
+    ctx.fillStyle="#ffcc44";ctx.font="bold 18px monospace";
+    ctx.fillText("VAGUE "+(infiniteLevel+1)+" — NIVEAU INFINI !",W/2,185);
   }
 
   // Petites images de Moka animées qui courent
@@ -1045,24 +1161,48 @@ function drawLoading(){
 function updateHUD(){
   document.getElementById("sc").textContent="SCORE: "+String(score).padStart(6,"0");
   document.getElementById("hi").textContent="HI-SCORE: "+String(hiScore).padStart(6,"0");
-  document.getElementById("lvlname").textContent=LEVEL_DEFS[currentLevel-1].name;
+  if(currentLevel<=3){
+    document.getElementById("lvlname").textContent=LEVEL_DEFS[currentLevel-1].name;
+  } else {
+    document.getElementById("lvlname").textContent="VAGUE "+infiniteLevel;
+  }
   const hearts=lives===2?"❤️❤️ 2 VIES":"❤️ 1 VIE";
   document.getElementById("lv").textContent=hearts;
 }
 
 // ── RESET LEVEL ──
 function resetLevel(){
-  const lvl=LEVEL_DEFS[currentLevel-1];
+  let lvl,felixWP,mokaStart,felixStart,liliStart,choupiStart;
+  if(currentLevel<=3){
+    lvl=LEVEL_DEFS[currentLevel-1];
+    mokaStart=lvl.mokaStart;felixStart=lvl.felixStart;liliStart=lvl.liliStart;choupiStart=lvl.choupiStart;
+    felixWP=lvl.felixWP;
+  } else {
+    // Niveau infini: positions aléatoires
+    mokaStart={x:3+Math.floor(Math.random()*8),y:3+Math.floor(Math.random()*4)};
+    felixStart={x:10+Math.floor(Math.random()*3),y:1+Math.floor(Math.random()*3)};
+    liliStart={x:1+Math.floor(Math.random()*2),y:6+Math.floor(Math.random()*3)};
+    choupiStart={x:11+Math.floor(Math.random()*2),y:6+Math.floor(Math.random()*3)};
+    felixWP=[[felixStart.x,felixStart.y],[2,2],[2,8],[11,8],[6,5]];
+    // Choisir style aléatoire
+    infiniteRoomStyle=INF_STYLES[Math.floor(Math.random()*INF_STYLES.length)];
+  }
   t=0;niaiseries=0;
-  mk={x:lvl.mokaStart.x,y:lvl.mokaStart.y,dir:"bas",frame:0,ft:0};
-  felix={x:lvl.felixStart.x,y:lvl.felixStart.y,dir:"bas",frame:0,ft:0,wp:0,chasing:false,alert:0,rage:0,rageChaseDur:0};
-  lili={x:lvl.liliStart.x,y:lvl.liliStart.y,dir:"bas",frame:0,ft:0,target:null,chasing:false,hairAnim:0};
-  ch={x:lvl.choupiStart.x,y:lvl.choupiStart.y,dir:"bas",fleeing:false,vx:0,vy:0,fleeTimer:0,fearAnim:0,targetCorner:null};
+  mk={x:mokaStart.x,y:mokaStart.y,dir:"bas",frame:0,ft:0};
+  felix={x:felixStart.x,y:felixStart.y,dir:"bas",frame:0,ft:0,wp:0,chasing:false,alert:0,rage:0,rageChaseDur:0};
+  lili={x:liliStart.x,y:liliStart.y,dir:"bas",frame:0,ft:0,target:null,chasing:false,hairAnim:0};
+  ch={x:choupiStart.x,y:choupiStart.y,dir:"bas",fleeing:false,vx:0,vy:0,fleeTimer:0,fearAnim:0,targetCorner:null};
   bn={active:false,x:0,y:0,timer:0,spawnIn:15+Math.random()*20};
   liliHitCooldown=0;felixHitCooldown=0;
+  // Timer difficile après niveau 3
+  if(difficulty==="difficile"&&currentLevel>=3){
+    diffTimer=60;diffTimerActive=true;
+  } else {
+    diffTimer=0;diffTimerActive=false;
+  }
   initObjs();
 }
-function fullReset(){score=0;lives=2;currentLevel=1;resetLevel();}
+function fullReset(){score=0;lives=2;currentLevel=1;infiniteLevel=0;diffTimer=0;diffTimerActive=false;resetLevel();}
 
 // ── BOUCLE PRINCIPALE ──
 function loop(ts){
@@ -1090,6 +1230,18 @@ function loop(ts){
   if(state==="playing"){
     if(liliHitCooldown>0)liliHitCooldown-=dt;
     if(felixHitCooldown>0)felixHitCooldown-=dt;
+
+    // ── TIMER DIFFICILE (après niveau 3 en difficile) ──
+    if(diffTimerActive){
+      diffTimer-=dt;
+      if(diffTimer<=0){
+        // Temps écoulé = mort
+        snd("loselife");hiScore=Math.max(hiScore,score);lives--;
+        if(lives<=0){saveHS("MOKA",score);state="dead";stopMusic();}
+        else{state="loselife";}
+        diffTimerActive=false;
+      }
+    }
 
     let dx=0,dy=0;
     if(keys["ArrowLeft"]||keys["a"]||keys["A"])dx=-1;
@@ -1152,6 +1304,18 @@ function loop(ts){
 
     updateHUD();
 
+    // ── AFFICHAGE TIMER DIFFICILE ──
+    if(diffTimerActive){
+      const secs=Math.ceil(diffTimer);
+      const urgent=secs<=10;
+      ctx.save();
+      ctx.textAlign="center";
+      ctx.font=`bold ${urgent?20:16}px monospace`;
+      ctx.fillStyle=urgent?`rgba(255,${Math.floor(Math.sin(t*10)*60+60)},0,1)`:"#fff200";
+      ctx.fillText("⏱ "+secs+"s",W/2,urgent?18:15);
+      ctx.restore();
+    }
+
     // ── COLLISIONS ──
     if(felixHitCooldown<=0&&Math.hypot(mk.x-felix.x,mk.y-felix.y)<.85){
       snd("loselife");hiScore=Math.max(hiScore,score);lives--;
@@ -1169,7 +1333,10 @@ function loop(ts){
       if(currentLevel<3){
         startLoading(); // ← écran de chargement animé
       } else {
-        saveHS("MOKA",score);state="win";stopMusic();
+        // Après niveau 3 ou niveau infini: passer à la prochaine vague infinie
+        infiniteLevel++;
+        currentLevel=4; // reste à 4+ pour signaler niveau infini
+        startLoading();
       }
     }
   } else if(state==="dead"||state==="win"){
