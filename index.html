@@ -84,17 +84,23 @@ for(const[k,s]of Object.entries(IP)){const i=new Image();i.src=s;imgs[k]=i;}
 let AC=null,bgAudio=null,musicMuted=false,soundMuted=false;
 let currentMusicLevel=1;
 let audioUnlocked=false;
+let pendingMusicFile=null; // musique en attente si audio pas encore débloqué
 
 function getAC(){
   if(!AC){AC=new(window.AudioContext||window.webkitAudioContext)();}
   return AC;
 }
+
 function unlockAudio(){
   if(audioUnlocked)return;
   audioUnlocked=true;
   const ac=getAC();
   if(ac.state==="suspended"){ac.resume().catch(()=>{});}
-  if(!bgAudio&&!musicMuted)startMusic();
+  // Si une musique attendait, on la lance maintenant
+  if(pendingMusicFile&&!bgAudio&&!musicMuted){
+    const f=pendingMusicFile;pendingMusicFile=null;
+    startMusic(f);
+  }
 }
 document.addEventListener("touchstart",unlockAudio,{passive:true});
 document.addEventListener("click",unlockAudio);
@@ -117,6 +123,8 @@ function startMusic(forceFile){
     if(currentLevel===2)musicFile="musique2.mp3";
     else if(currentLevel>=3)musicFile="musique3.mp3";
   }
+  // Si audio pas encore débloqué (Android/iOS), on met en attente
+  if(!audioUnlocked){pendingMusicFile=musicFile;return;}
   bgAudio=new Audio("musique/"+musicFile);
   bgAudio.loop=true;
   bgAudio.volume=0.4;
@@ -125,13 +133,18 @@ function startMusic(forceFile){
 }
 function stopMusic(){
   if(bgAudio){bgAudio.pause();bgAudio.src="";bgAudio=null;}
+  pendingMusicFile=null;
 }
 function changeLevelMusic(){
   if(musicMuted)return;
   if(currentMusicLevel===currentLevel)return;
   stopMusic();startMusic();
 }
-function toggleMusic(){musicMuted=!musicMuted;if(bgAudio)bgAudio.volume=musicMuted?0:0.4;if(!musicMuted&&!bgAudio)startMusic();}
+function toggleMusic(){
+  musicMuted=!musicMuted;
+  if(bgAudio)bgAudio.volume=musicMuted?0:0.4;
+  if(!musicMuted&&!bgAudio)startMusic();
+}
 
 // ── DIFFICULTÉ ──
 let difficulty="facile";
@@ -917,7 +930,6 @@ function drawMenu(){
   // Indicateur mobile
   ctx.font="10px monospace";ctx.fillStyle="#aaa";ctx.textAlign="center";
   ctx.fillText("📱 Mobile: D-Pad + ✅OK   🎮 Manette: supportée",W/2,375);
-  // Avertissement mode silencieux iOS
   ctx.fillStyle="#ff6600";ctx.font="bold 10px monospace";
   ctx.fillText("🔕 iPhone/iPad: désactiver le mode silencieux (switch côté)",W/2,392);
   ctx.fillStyle="#000000";ctx.font="10px monospace";ctx.fillText("2026 Créations Éliane Demers TM version 2",W/2,408);ctx.textAlign="left";
