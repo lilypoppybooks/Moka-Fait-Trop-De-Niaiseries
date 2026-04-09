@@ -81,33 +81,23 @@ const IP={moka_bas:"images/Moka/Moka_bas.png",moka_droite:"images/Moka/Moka_droi
 for(const[k,s]of Object.entries(IP)){const i=new Image();i.src=s;imgs[k]=i;}
 
 // ── AUDIO ──
-let AC=null,bgSrc=null,bgGain=null,musicMuted=false,soundMuted=false;
-let currentMusicLevel = 1;
+let AC=null,bgAudio=null,musicMuted=false,soundMuted=false;
+let currentMusicLevel=1;
 let audioUnlocked=false;
+
 function getAC(){
   if(!AC){AC=new(window.AudioContext||window.webkitAudioContext)();}
   return AC;
 }
 function unlockAudio(){
   if(audioUnlocked)return;
+  audioUnlocked=true;
   const ac=getAC();
-  const doUnlock=()=>{
-    const buf=ac.createBuffer(1,1,22050);
-    const src=ac.createBufferSource();
-    src.buffer=buf;src.connect(ac.destination);src.start(0);
-    audioUnlocked=true;
-    if(!bgSrc&&!musicMuted)startMusic();
-  };
-  if(ac.state==="suspended"){
-    ac.resume().then(doUnlock).catch(()=>{});
-  } else {
-    doUnlock();
-  }
+  if(ac.state==="suspended"){ac.resume().catch(()=>{});}
+  if(!bgAudio&&!musicMuted)startMusic();
 }
 document.addEventListener("touchstart",unlockAudio,{passive:true});
-document.addEventListener("touchend",unlockAudio,{passive:true});
 document.addEventListener("click",unlockAudio);
-canvas.addEventListener("touchstart",unlockAudio,{passive:true});
 function snd(type){
   if(soundMuted)return;
   try{const ac=getAC(),o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);
@@ -120,66 +110,28 @@ function snd(type){
     else if(type==="loselife"){o.type="sawtooth";o.frequency.setValueAtTime(400,ac.currentTime);o.frequency.exponentialRampToValueAtTime(80,ac.currentTime+.5);g.gain.setValueAtTime(.25,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.5);o.start();o.stop(ac.currentTime+.5);}
     else if(type==="angry"){o.type="square";o.frequency.setValueAtTime(200,ac.currentTime);o.frequency.exponentialRampToValueAtTime(100,ac.currentTime+.3);g.gain.setValueAtTime(.2,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.35);o.start();o.stop(ac.currentTime+.35);}
   }catch(e){}}
-async function startMusic(forceFile){
-  if(musicMuted||bgSrc)return;
-  const acCheck=getAC();
-  if(acCheck.state==="suspended")return;
-  // Choisir la musique selon le niveau (1, 2 ou 3) ou aléatoire si fourni
-  let musicFile = forceFile || "musique1.mp3";
+function startMusic(forceFile){
+  if(musicMuted||bgAudio)return;
+  let musicFile=forceFile||"musique1.mp3";
   if(!forceFile){
-    if(currentLevel === 2) musicFile = "musique2.mp3";
-    else if(currentLevel >= 3) musicFile = "musique3.mp3";
+    if(currentLevel===2)musicFile="musique2.mp3";
+    else if(currentLevel>=3)musicFile="musique3.mp3";
   }
-  
-  try{
-    const ac=getAC();
-    // iOS: s'assurer que le contexte est actif
-    if(ac.state==="suspended"){await ac.resume();}
-    const r=await fetch("musique/" + musicFile);
-    if(!r.ok){
-      console.log("Musique non trouvée:", musicFile);
-      return;
-    }
-    const arrayBuf=await r.arrayBuffer();
-    // iOS nécessite un callback pour decodeAudioData (pas toujours de Promise)
-    const buf=await new Promise((resolve,reject)=>{
-      const p=ac.decodeAudioData(arrayBuf,resolve,reject);
-      if(p&&p.then)p.then(resolve).catch(reject);
-    });
-    bgSrc=ac.createBufferSource();
-    bgSrc.buffer=buf;
-    bgSrc.loop=true;
-    bgGain=ac.createGain();
-    bgGain.gain.value=.4;
-    bgSrc.connect(bgGain);
-    bgGain.connect(ac.destination);
-    bgSrc.start();
-    currentMusicLevel = currentLevel;  // On note quelle musique joue
-  }catch(e){
-    console.log("Erreur musique:", e);
-  }
+  bgAudio=new Audio("musique/"+musicFile);
+  bgAudio.loop=true;
+  bgAudio.volume=0.4;
+  bgAudio.play().catch(()=>{bgAudio=null;});
+  currentMusicLevel=currentLevel;
 }
-
-
 function stopMusic(){
-  if(bgSrc){
-    try{bgSrc.stop();}catch(e){}
-    bgSrc=null;
-    bgGain=null;
-  }
+  if(bgAudio){bgAudio.pause();bgAudio.src="";bgAudio=null;}
 }
-// Cette nouvelle fonction change la musique quand on change de niveau
 function changeLevelMusic(){
-  if(musicMuted) return;
-  // Si on est déjà en train de jouer une musique pour ce niveau, on ne fait rien
-  if(currentMusicLevel === currentLevel) return;
-  // Sinon, on arrête et on relance la bonne musique
-  stopMusic();
-  startMusic();
+  if(musicMuted)return;
+  if(currentMusicLevel===currentLevel)return;
+  stopMusic();startMusic();
 }
-
-
-function toggleMusic(){musicMuted=!musicMuted;if(bgGain)bgGain.gain.value=musicMuted?0:.4;if(!musicMuted&&!bgSrc)startMusic();}
+function toggleMusic(){musicMuted=!musicMuted;if(bgAudio)bgAudio.volume=musicMuted?0:0.4;if(!musicMuted&&!bgAudio)startMusic();}
 
 // ── DIFFICULTÉ ──
 let difficulty="facile";
@@ -964,8 +916,11 @@ function drawMenu(){
   drawBtn("📚  ACHETER MA BD MOKA",330,menuSel===3,"#22aa55");
   // Indicateur mobile
   ctx.font="10px monospace";ctx.fillStyle="#aaa";ctx.textAlign="center";
-  ctx.fillText("📱 Mobile: D-Pad + ✅OK   🎮 Manette: supportée",W/2,380);
-  ctx.fillStyle="#000000";ctx.fillText("2026 Créations Éliane Demers TM version 2",W/2,403);ctx.textAlign="left";
+  ctx.fillText("📱 Mobile: D-Pad + ✅OK   🎮 Manette: supportée",W/2,375);
+  // Avertissement mode silencieux iOS
+  ctx.fillStyle="#ff6600";ctx.font="bold 10px monospace";
+  ctx.fillText("🔕 iPhone/iPad: désactiver le mode silencieux (switch côté)",W/2,392);
+  ctx.fillStyle="#000000";ctx.font="10px monospace";ctx.fillText("2026 Créations Éliane Demers TM version 2",W/2,408);ctx.textAlign="left";
 }
 
 function drawOptions(){
