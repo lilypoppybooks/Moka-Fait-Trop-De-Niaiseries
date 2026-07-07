@@ -27,7 +27,7 @@ canvas{display:block;width:100%;height:auto;border:4px solid #222;cursor:pointer
 
 /* Zone droite: boutons action + menu */
 #action-zone{position:absolute;right:10px;bottom:6px;display:flex;flex-direction:column;gap:6px;align-items:flex-end;}
-#btn-action{width:58px;height:58px;background:#ff3388;border-radius:50%;font-size:16px;border:3px solid #ff88bb;color:#fff;cursor:pointer;user-select:none;-webkit-user-select:none;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;touch-action:none;font-family:monospace;font-weight:bold;transition:background .08s;}
+#btn-action{width:66px;height:66px;background:#ff3388;border-radius:50%;font-size:18px;border:3px solid #ff88bb;color:#fff;cursor:pointer;user-select:none;-webkit-user-select:none;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;touch-action:none;font-family:monospace;font-weight:bold;transition:background .08s;}
 #btn-action:active,#btn-action.pressed{background:#cc0055;}
 #menu-btns{display:flex;flex-direction:row;gap:5px;}
 .mbtn{padding:6px 10px;background:#222;color:#fff;border:2px solid #555;border-radius:8px;font-size:11px;font-family:monospace;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;touch-action:none;white-space:nowrap;transition:background .08s;}
@@ -158,12 +158,14 @@ function snd(type){
     else if(type==="angry"){o.type="square";o.frequency.setValueAtTime(200,ac.currentTime);o.frequency.exponentialRampToValueAtTime(100,ac.currentTime+.3);g.gain.setValueAtTime(.2,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.35);o.start();o.stop(ac.currentTime+.35);}
   }catch(e){}}
 
-// ── DIFFICULTÉ ──
-let difficulty="facile";
+// ── CONFIG DE JEU (difficulté unique) ──
 function getDiffConfig(){
-  if(difficulty==="difficile")return{felixChaseRange:4.5,felixChaseKeep:true,liliChaseRange:4.0,liliChaseKeep:true,felixSpeed:1.1,liliSpeed:0.95};
   return{felixChaseRange:3.0,felixChaseKeep:false,liliChaseRange:2.5,liliChaseKeep:false,felixSpeed:0.85,liliSpeed:0.7};
 }
+// ── PERSONNAGES SELON LE NIVEAU ──
+// Niveau 1: Choupi seulement · Niveau 2: Choupi + Lili · Niveau 3: tout le monde
+function hasFelix(){return currentLevel>=3;}
+function hasLili(){return currentLevel>=2;}
 
 // ── ÉTAT ──
 let state="menu",score=0,hiScore=0,t=0,lastT=0,niaiseries=0,menuSel=0;
@@ -303,11 +305,11 @@ canvas.addEventListener("touchstart",e=>{
 
 function handleCanvasClick(cx,cy){
   if(state==="menu")menuClick(cx,cy);
-  if(state==="options")optClick(cx,cy);
-  if(state==="highscores")state="menu";
-  if(state==="dead"||state==="win")endClick(cx,cy);
-  if(state==="loselife")loseLifeClick(cx,cy);
-  if(state==="loading"&&loadingProgress>=1)finishLoading();
+  else if(state==="options")optClick(cx,cy);
+  else if(state==="highscores")state="menu";
+  else if(state==="dead"||state==="win")endClick(cx,cy);
+  else if(state==="loselife")loseLifeClick(cx,cy);
+  else if(state==="loading"&&loadingProgress>=1)finishLoading();
 }
 
 function menuClick(cx,cy){
@@ -322,8 +324,7 @@ function menuClick(cx,cy){
 function optClick(cx,cy){
   if(cy>=110&&cy<=150)toggleMusic();
   if(cy>=170&&cy<=210){soundMuted=!soundMuted;}
-  if(cy>=230&&cy<=270){difficulty=difficulty==="facile"?"difficile":"facile";}
-  if(cy>=350&&cy<=390)state="menu";
+  if(cy>=305&&cy<=345)state="menu";
 }
 function endClick(cx,cy){
   const ci=imgs["cover"],cw=90,ch2=90,cx2=W/2-45,cy2=140;
@@ -445,7 +446,8 @@ canvas.addEventListener("touchend",e=>{
 // ── MANETTE (Gamepad API) ──
 let gpPrev={};
 function pollGamepad(){
-  const gps=navigator.getGamepads?navigator.getGamepads():[];
+  let gps=[];
+  try{gps=navigator.getGamepads?navigator.getGamepads():[];}catch(e){return;}
   for(const gp of gps){
     if(!gp)continue;
     // Axes joystick gauche
@@ -489,11 +491,12 @@ function nearObj(){for(const o of objs){if(!o.ok)continue;const cx=o.x+o.w/2-.5,
 function spawnParts(px,py,n,col){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=1.5+Math.random()*3.5;parts.push({x:px,y:py,vx:Math.cos(a)*s,vy:Math.sin(a)*s-2,life:1,dec:.025+Math.random()*.03,sz:3+Math.random()*6,col});}}
 function hitObj(o){
   o.hp--;
-  felix.alert=Math.min(1,felix.alert+.4);
-  // Augmenter rage de Felix quand Moka casse quelque chose
-  felix.rage=Math.min(3,felix.rage+1);
-  applyFelixRageBehavior();
-  if(difficulty==="difficile"){lili.chasing=true;}
+  if(hasFelix()){
+    felix.alert=Math.min(1,felix.alert+.4);
+    // Augmenter rage de Felix quand Moka casse quelque chose
+    felix.rage=Math.min(3,felix.rage+1);
+    applyFelixRageBehavior();
+  }
   spawnParts((o.x+o.w/2)*TILE,(o.y+o.h/2)*TILE,5,o.t==="sofa"?"#e8e8ff":o.t==="box"?"#d4a030":"#ff8866");
   snd("smash");
   if(o.hp<=0){o.ok=false;score+=o.pts;niaiseries++;rubble.push({...o});spawnParts((o.x+o.w/2)*TILE,(o.y+o.h/2)*TILE,o.t==="sofa"?22:10,o.t==="sofa"?"#e8e8ff":o.t==="box"?"#d4a030":"#ff8866");}
@@ -874,7 +877,7 @@ function drawMenu(){
   else{ctx.fillStyle="#7a4820";ctx.fillRect(W/2-30,62,60,60);}
   drawBtn("▶  JOUER",180,menuSel===0,"#ff3388");
   drawBtn("⚙  OPTIONS",230,menuSel===1,"#8855ff");
-  drawBtn("🏆  HIGH-SCORES",280,menuSel===2,"#ff8800");
+  drawBtn("📖  RÈGLES DU JEU",280,menuSel===2,"#ff8800");
   drawBtn("📚  ACHETER MA BD MOKA",330,menuSel===3,"#22aa55");
   // Indicateur mobile
   ctx.font="10px monospace";ctx.fillStyle="#aaa";ctx.textAlign="center";
@@ -891,28 +894,50 @@ function drawOptions(){
   drawBtn(musicMuted?"OFF  ✕":"ON  ✓",110,false,musicMuted?"#cc4444":"#44aa44");
   ctx.fillText("🔊  SONS",W/2-140,200);
   drawBtn(soundMuted?"OFF  ✕":"ON  ✓",170,false,soundMuted?"#cc4444":"#44aa44");
-  ctx.fillText("🎮  DIFFICULTÉ",W/2-140,260);
-  drawBtn(difficulty==="facile"?"FACILE  😊":"DIFFICILE  😤",230,false,difficulty==="facile"?"#44aaff":"#ff6622");
-  ctx.font="12px monospace";ctx.fillStyle="#888";ctx.textAlign="center";ctx.fillText("Cliquez/tapez pour basculer",W/2,290);
+  ctx.font="12px monospace";ctx.fillStyle="#888";ctx.textAlign="center";ctx.fillText("Cliquez/tapez pour basculer",W/2,230);
   // Crédits musique
   ctx.font="9px monospace";ctx.fillStyle="#000000";
-  ctx.fillText("🎵 Musique: moodmode (Pixabay) | BouncyRunner (Pixabay) | Suno",W/2,315);
-  ctx.fillText("🎮 Créations Éliane Demers | Auteur Félix Lahaie",W/2,330);
-  drawBtn("← RETOUR MENU",355,false,"#888");ctx.textAlign="left";
+  ctx.fillText("🎵 Musique: moodmode (Pixabay) | BouncyRunner (Pixabay) | Suno",W/2,260);
+  ctx.fillText("🎮 Créations Éliane Demers | Auteur Félix Lahaie",W/2,275);
+  drawBtn("← RETOUR MENU",305,false,"#888");ctx.textAlign="left";
 }
 
 function drawHighScores(){
   ctx.fillStyle="#fff8f0";ctx.fillRect(0,0,W,H);
   ctx.fillStyle="#ff8800";ctx.fillRect(0,0,W,50);
-  ctx.fillStyle="#fff";ctx.font="bold 20px monospace";ctx.textAlign="center";ctx.fillText("🏆  TOP 10 HIGH-SCORES",W/2,33);
-  ctx.font="13px monospace";
-  if(highScores.length===0){ctx.fillStyle="#aaa";ctx.fillText("Aucun score dans scores/score.csv",W/2,200);}
-  else highScores.forEach((s,i)=>{
-    const y=68+i*30,medals=["🥇","🥈","🥉"];
-    ctx.fillStyle=i===0?"#ffd700":i===1?"#cccccc":i===2?"#cd7f32":"#444";
-    ctx.textAlign="left";ctx.fillText(`${i<3?medals[i]:"#"+(i+1)}  ${s.name.slice(0,8).padEnd(8)}`,W/2-160,y);
-    ctx.textAlign="right";ctx.fillText(String(s.score).padStart(6,"0"),W/2+160,y);
-  });
+  ctx.fillStyle="#fff";ctx.font="bold 20px monospace";ctx.textAlign="center";ctx.fillText("📖  RÈGLES DU JEU",W/2,33);
+  ctx.textAlign="left";
+  let ry=70;
+  const rlh=15;
+  function rline(txt,size,col,bold){
+    ctx.font=(bold?"bold ":"")+size+"px monospace";ctx.fillStyle=col;
+    ctx.fillText(txt,20,ry);ry+=rlh;
+  }
+  function rwrap(txt,size,col){
+    ctx.font=size+"px monospace";ctx.fillStyle=col;
+    const words=txt.split(" ");let l="";
+    for(const w of words){
+      const test=l?l+" "+w:w;
+      if(ctx.measureText(test).width>520){ctx.fillText(l,20,ry);ry+=rlh;l=w;}
+      else l=test;
+    }
+    if(l){ctx.fillText(l,20,ry);ry+=rlh;}
+  }
+  rline("🎯 OBJECTIF",13,"#ff3388",true);
+  rwrap("Moka Lahaie doit tout niaiser dans le salon (et les autres pièces de la maison) !",11,"#444");
+  ry+=4;
+  rline("💥 LES NIAISERIES",13,"#ff3388",true);
+  rwrap("Fonce sur les objets (canapé, télé, boîtes, lampes...) et appuie sur ESPACE ou 💥 pour les niaiser. Termine tous les objets d'une pièce pour passer au niveau suivant !",11,"#444");
+  ry+=4;
+  rline("🍌 LA BANANE",13,"#ff3388",true);
+  rwrap("Une banane apparaît de temps en temps : attrape-la avant Choupi pour gagner +100 points !",11,"#444");
+  ry+=6;
+  rline("👪 LES PERSONNAGES",13,"#8855ff",true);
+  rwrap("🐰 Choupi (le lapin blanc) : il a peur de Moka et se sauve, mais il adore les bananes !",11,"#444");
+  rwrap("👩 Lili (la maman de Moka) : elle répare ce que Moka casse. Elle arrive dès le niveau 2 !",11,"#444");
+  rwrap("👨 Félix (le papa de Moka) : plus Moka niaise, plus il se fâche et le pourchasse. Il arrive au niveau 3 !",11,"#444");
+  ry+=6;
+  rwrap("⚠ Attention : si Lili ou Félix attrapent Moka, il perd une vie !",11,"#cc2222");
   ctx.fillStyle="#888";ctx.font="13px monospace";ctx.textAlign="center";ctx.fillText("Cliquez / ✅OK pour retourner au menu",W/2,405);ctx.textAlign="left";
 }
 
@@ -1049,7 +1074,7 @@ function drawLoading(){
   }
   // Petit texte discret sous la cover
   ctx.fillStyle="rgba(255,255,200,.7)";ctx.font="10px monospace";
-  ctx.fillText("📚 Moka a aussi une BD! amazon.ca/dp/2982442809",W/2,cvY+cvSize+14);
+  ctx.fillText("📚 Moka a aussi une BD! amazon.ca/dp/2982442817",W/2,cvY+cvSize+14);
 
   if(loadingProgress>=1){
     // Clignote "Continuer" — positionné sous la BD
@@ -1169,7 +1194,9 @@ function loop(ts){
     if(spNow&&!spWas){const o=nearObj();if(o)hitObj(o);else for(let i=0;i<6;i++)parts.push({x:mk.x*TILE,y:mk.y*TILE,vx:(Math.random()-.5)*4,vy:-2-Math.random()*3,life:1,dec:.06,sz:5,col:"#ff88ff"});}
     spWas=spNow;
 
-    updateFelix(dt);updateLili(dt);updateChoupi(dt);updateBanane(dt);
+    if(hasFelix())updateFelix(dt);
+    if(hasLili())updateLili(dt);
+    updateChoupi(dt);updateBanane(dt);
     for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.x+=p.vx*60*dt;p.y+=p.vy*60*dt;p.vy+=5*dt;p.life-=p.dec;if(p.life<=0)parts.splice(i,1);}
 
     drawRoom();
@@ -1178,16 +1205,20 @@ function loop(ts){
     drawBanane();drawChoupi(ch.x,ch.y,ch.dir);
 
     // Cônes vision Félix
-    ctx.save();ctx.globalAlpha=.09;ctx.fillStyle=felix.chasing?"#ff0000":"#44ffaa";
-    const ra=felix.dir==="droite"?0:felix.dir==="gauche"?Math.PI:felix.dir==="bas"?Math.PI/2:-Math.PI/2;
-    ctx.beginPath();ctx.moveTo(felix.x*TILE+TILE/2,felix.y*TILE+TILE/2);ctx.arc(felix.x*TILE+TILE/2,felix.y*TILE+TILE/2,(felix.chasing?5:3)*TILE,ra-.55,ra+.55);ctx.closePath();ctx.fill();ctx.restore();
+    if(hasFelix()){
+      ctx.save();ctx.globalAlpha=.09;ctx.fillStyle=felix.chasing?"#ff0000":"#44ffaa";
+      const ra=felix.dir==="droite"?0:felix.dir==="gauche"?Math.PI:felix.dir==="bas"?Math.PI/2:-Math.PI/2;
+      ctx.beginPath();ctx.moveTo(felix.x*TILE+TILE/2,felix.y*TILE+TILE/2);ctx.arc(felix.x*TILE+TILE/2,felix.y*TILE+TILE/2,(felix.chasing?5:3)*TILE,ra-.55,ra+.55);ctx.closePath();ctx.fill();ctx.restore();
+    }
     // Cônes vision Lili
-    ctx.save();ctx.globalAlpha=.07;ctx.fillStyle=lili.chasing?"#ff88cc":"#ffaadd";
-    const ra2=lili.dir==="droite"?0:lili.dir==="gauche"?Math.PI:lili.dir==="bas"?Math.PI/2:-Math.PI/2;
-    ctx.beginPath();ctx.moveTo(lili.x*TILE+TILE/2,lili.y*TILE+TILE/2);ctx.arc(lili.x*TILE+TILE/2,lili.y*TILE+TILE/2,2.5*TILE,ra2-.55,ra2+.55);ctx.closePath();ctx.fill();ctx.restore();
+    if(hasLili()){
+      ctx.save();ctx.globalAlpha=.07;ctx.fillStyle=lili.chasing?"#ff88cc":"#ffaadd";
+      const ra2=lili.dir==="droite"?0:lili.dir==="gauche"?Math.PI:lili.dir==="bas"?Math.PI/2:-Math.PI/2;
+      ctx.beginPath();ctx.moveTo(lili.x*TILE+TILE/2,lili.y*TILE+TILE/2);ctx.arc(lili.x*TILE+TILE/2,lili.y*TILE+TILE/2,2.5*TILE,ra2-.55,ra2+.55);ctx.closePath();ctx.fill();ctx.restore();
+    }
 
-    drawLili(lili.x*TILE-TILE/2,lili.y*TILE-TILE/2,lili.dir,lili.frame,lili.chasing);
-    drawFelix(felix.x*TILE-TILE/2,felix.y*TILE-TILE/2,felix.dir,felix.frame,felix.chasing);
+    if(hasLili())drawLili(lili.x*TILE-TILE/2,lili.y*TILE-TILE/2,lili.dir,lili.frame,lili.chasing);
+    if(hasFelix())drawFelix(felix.x*TILE-TILE/2,felix.y*TILE-TILE/2,felix.dir,felix.frame,felix.chasing);
     drawMoka(mk.x*TILE-TILE/2,mk.y*TILE-TILE/2,mk.dir,mk.frame);
 
     for(const p of parts){ctx.save();ctx.globalAlpha=p.life;ctx.fillStyle=p.col;ctx.fillRect(p.x-p.sz/2,p.y-p.sz/2,p.sz,p.sz);ctx.restore();}
@@ -1215,12 +1246,12 @@ function loop(ts){
     updateHUD();
 
     // ── COLLISIONS ──
-    if(felixHitCooldown<=0&&Math.hypot(mk.x-felix.x,mk.y-felix.y)<.85){
+    if(hasFelix()&&felixHitCooldown<=0&&Math.hypot(mk.x-felix.x,mk.y-felix.y)<.85){
       snd("loselife");hiScore=Math.max(hiScore,score);lives--;
       if(lives<=0){saveHS("MOKA",score);state="dead";stopMusic();}
       else{state="loselife";}
     }
-    if(liliHitCooldown<=0&&Math.hypot(mk.x-lili.x,mk.y-lili.y)<.85){
+    if(hasLili()&&liliHitCooldown<=0&&Math.hypot(mk.x-lili.x,mk.y-lili.y)<.85){
       snd("loselife");hiScore=Math.max(hiScore,score);lives--;
       if(lives<=0){saveHS("MOKA",score);state="dead";stopMusic();}
       else{state="loselife";}
